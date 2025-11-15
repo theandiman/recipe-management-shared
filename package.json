@@ -1,6 +1,6 @@
 {
   "name": "@theandiman/recipe-management-shared",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "description": "Shared models and types for Recipe Management platform",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
