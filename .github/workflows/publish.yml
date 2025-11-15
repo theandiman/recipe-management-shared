@@ -32,7 +32,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          registry-url: 'https://registry.npmjs.org'
+          registry-url: 'https://npm.pkg.github.com'
+          scope: 'theandiman'
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -40,11 +41,9 @@ jobs:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: 'temurin'
           cache: 'maven'
-          server-id: ossrh
-          server-username: MAVEN_USERNAME
-          server-password: MAVEN_PASSWORD
-          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
-          gpg-passphrase: MAVEN_GPG_PASSPHRASE
+          server-id: github
+          server-username: ${{ github.actor }}
+          server-password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install Node.js dependencies
         run: npm ci
@@ -52,18 +51,16 @@ jobs:
       - name: Build all
         run: npm run build
 
-      - name: Publish to npm
-        run: npm publish --access public
+      - name: Publish to GitHub Packages (npm)
+        run: npm publish
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Publish to Maven Central
+      - name: Publish to GitHub Packages (Maven)
         run: |
           mvn clean deploy -DskipTests
         env:
-          MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
-          MAVEN_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
-          MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   release:
     needs: publish
@@ -99,11 +96,18 @@ jobs:
 
             ### TypeScript/JavaScript
             ```bash
-            npm install @recipe-management/shared@${{ github.ref_name }}
+            npm install @theandiman/recipe-management-shared@${{ github.ref_name }} --registry https://npm.pkg.github.com
             ```
 
             ### Java
             ```xml
+            <repositories>
+                <repository>
+                    <id>github</id>
+                    <url>https://maven.pkg.github.com/theandiman/recipe-management-shared</url>
+                </repository>
+            </repositories>
+
             <dependency>
                 <groupId>com.recipe</groupId>
                 <artifactId>recipe-management-shared</artifactId>

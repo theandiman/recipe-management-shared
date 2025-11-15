@@ -1,5 +1,5 @@
 {
-  "name": "@recipe-management/shared",
+  "name": "@theandiman/recipe-management-shared",
   "version": "1.0.0",
   "description": "Shared models and types for Recipe Management platform",
   "main": "dist/index.js",
