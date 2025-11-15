@@ -12,7 +12,8 @@
     "test:ts": "jest",
     "test:java": "mvn test",
     "clean": "rm -rf dist target",
-    "publish": "npm publish"
+  "prepublishOnly": "npm run build",
+  "publish:manual": "npm publish"
   },
   "keywords": [
     "recipe",
