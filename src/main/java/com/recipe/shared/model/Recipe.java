@@ -1,5 +1,6 @@
 package com.recipe.shared.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -72,6 +73,7 @@ public class Recipe {
      * Converts servings from string to integer if needed.
      * Useful for frontend compatibility where servings might be a string.
      */
+    @JsonIgnore
     public Integer getServingsAsInt() {
         if (servings != null) {
             return servings;
@@ -82,6 +84,7 @@ public class Recipe {
     /**
      * Gets total time in minutes, calculating if not explicitly set.
      */
+    @JsonIgnore
     public Integer getCalculatedTotalTimeMinutes() {
         if (totalTimeMinutes != null) {
             return totalTimeMinutes;

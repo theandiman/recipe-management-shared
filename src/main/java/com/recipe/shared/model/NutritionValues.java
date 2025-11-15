@@ -57,14 +57,14 @@ public class NutritionValues {
      * Converts to Map structure (for storage service compatibility).
      */
     public Map<String, Object> toMap() {
-        return Map.of(
-                "calories", calories,
-                "protein", protein,
-                "carbohydrates", carbohydrates,
-                "fat", fat,
-                "fiber", fiber,
-                "sodium", sodium
-        );
+        Map<String, Object> map = new java.util.HashMap<>();
+        if (calories != null) map.put("calories", calories);
+        if (protein != null) map.put("protein", protein);
+        if (carbohydrates != null) map.put("carbohydrates", carbohydrates);
+        if (fat != null) map.put("fat", fat);
+        if (fiber != null) map.put("fiber", fiber);
+        if (sodium != null) map.put("sodium", sodium);
+        return map;
     }
 
     private static Double getDoubleValue(Object value) {

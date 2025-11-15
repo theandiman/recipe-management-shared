@@ -46,9 +46,9 @@ public class NutritionalInfo {
      * Converts to Map structure (for storage service compatibility).
      */
     public Map<String, Object> toMap() {
-        return Map.of(
-                "perServing", perServing != null ? perServing.toMap() : null,
-                "total", total != null ? total.toMap() : null
-        );
+        Map<String, Object> map = new java.util.HashMap<>();
+        map.put("perServing", perServing != null ? perServing.toMap() : null);
+        map.put("total", total != null ? total.toMap() : null);
+        return map;
     }
 }
