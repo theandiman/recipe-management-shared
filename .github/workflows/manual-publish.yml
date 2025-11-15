@@ -181,6 +181,18 @@ jobs:
           sed -n '1,200p' $HOME/.m2/settings.xml | sed 's/<password>.*<\/password>/<password>***<\/password>/g' || true
           echo "Maven server username:" && grep -oP '(?<=<username>).*?(?=</username>)' $HOME/.m2/settings.xml || true
           echo "Test HEAD to artifact URL (HTTP status):"; curl -s -o /dev/null -w "%{http_code}" -u ${AUTH_USER}:${AUTH_TOKEN} "$URL" || true
+          # Force a settings.xml (explicit) using GITHUB_TOKEN to avoid interpolation issues
+          echo "Overwriting ~/.m2/settings.xml with explicit credentials (username masked in logs)"
+          mkdir -p "$HOME/.m2"
+          printf '%s\n' "<settings xmlns=\"http://maven.apache.org/SETTINGS/1.0.0\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd\">" > "$HOME/.m2/settings.xml"
+          printf '%s\n' "  <servers>" >> "$HOME/.m2/settings.xml"
+          printf '%s\n' "    <server>" >> "$HOME/.m2/settings.xml"
+          printf '%s\n' "      <id>github</id>" >> "$HOME/.m2/settings.xml"
+          printf '%s\n' "      <username>${GITHUB_ACTOR}</username>" >> "$HOME/.m2/settings.xml"
+          printf '%s\n' "      <password>${GITHUB_TOKEN}</password>" >> "$HOME/.m2/settings.xml"
+          printf '%s\n' "    </server>" >> "$HOME/.m2/settings.xml"
+          printf '%s\n' "  </servers>" >> "$HOME/.m2/settings.xml"
+          printf '%s\n' "</settings>" >> "$HOME/.m2/settings.xml"
           mvn -B -DskipTests deploy -s $HOME/.m2/settings.xml
 
       - name: Bump versions (post-publish)
