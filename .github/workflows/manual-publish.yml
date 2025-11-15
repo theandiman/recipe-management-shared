@@ -68,33 +68,12 @@ jobs:
           git tag -a "$TAG" -m "$MESSAGE"
           git push origin "$TAG"
 
-      - name: Verify tag matches package.json and pom.xml
-        id: verify_versions
-        run: |
-          TAG=${{ inputs.tag }}
-          # Accept tags with or without a leading 'v'
-          TAG_VER=${TAG#v}
-          NPM_VER=$(node -p "require('./package.json').version")
-          if [ "$NPM_VER" != "$TAG_VER" ]; then
-            echo "package.json version ($NPM_VER) does not match tag ($TAG_VER)" >&2
-            exit 1
-          fi
-          POM_VER=$(xmllint --xpath "/*[local-name()='project']/*[local-name()='version']/text()" pom.xml 2>/dev/null || true)
-          if [ "$POM_VER" = "" ]; then
-            # fallback: check in parent pom or other location - this script expects version to be present in pom.xml
-            echo "Unable to determine version from pom.xml" >&2
-            exit 1
-          fi
-          if [ "$POM_VER" != "$TAG_VER" ]; then
-            echo "pom.xml version ($POM_VER) does not match tag ($TAG_VER)" >&2
-            exit 1
-          fi
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20.x'
           registry-url: 'https://npm.pkg.github.com/'
+
 
       - name: Setup Java and Maven
         uses: actions/setup-java@v4
@@ -106,6 +85,28 @@ jobs:
           server-id: github
           server-username: ${{ github.actor }}
           server-password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify tag matches package.json and pom.xml
+        id: verify_versions
+        run: |
+          TAG=${{ inputs.tag }}
+          # Accept tags with or without a leading 'v'
+          TAG_VER=${TAG#v}
+          NPM_VER=$(node -p "require('./package.json').version")
+          if [ "$NPM_VER" != "$TAG_VER" ]; then
+            echo "package.json version ($NPM_VER) does not match tag ($TAG_VER)" >&2
+            exit 1
+          fi
+          # Use maven to reliably query the version from pom.xml
+          POM_VER=$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version)
+          if [ -z "$POM_VER" ]; then
+            echo "Unable to determine version from pom.xml via Maven help:evaluate" >&2
+            exit 1
+          fi
+          if [ "$POM_VER" != "$TAG_VER" ]; then
+            echo "pom.xml version ($POM_VER) does not match tag ($TAG_VER)" >&2
+            exit 1
+          fi
 
       - name: Publish npm package
         if: ${{ inputs.publish_npm == 'true' }}
@@ -128,7 +129,7 @@ jobs:
           mvn -B -DskipTests deploy -s $HOME/.m2/settings.xml
 
       - name: Bump versions (post-publish)
-        if: ${{ always() }}
+        if: ${{ success() }}
         id: bump
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
