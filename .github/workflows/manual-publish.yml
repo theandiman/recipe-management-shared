@@ -120,7 +120,7 @@ jobs:
           mvn -B -DskipTests deploy -s $HOME/.m2/settings.xml
 
       - name: Bump versions (post-publish)
-        if: ${{ success() }}
+        if: ${{ success() && (inputs.publish_npm == 'true' || inputs.publish_maven == 'true') }}
         id: bump
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
