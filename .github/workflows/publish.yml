@@ -43,13 +43,14 @@ jobs:
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: 'temurin'
-          cache: 'maven'
           server-id: github
           server-username: ${{ github.actor }}
           server-password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Clean Maven cache
-        run: rm -rf ~/.m2/repository/org/apache/maven/plugins/maven-compiler-plugin
+      - name: Setup Maven
+        uses: stCarolas/setup-maven@v5
+        with:
+          maven-version: 3.9.9
 
       - name: Install Node.js dependencies
         run: npm ci
