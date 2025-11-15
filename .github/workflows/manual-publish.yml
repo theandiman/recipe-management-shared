@@ -82,21 +82,6 @@ jobs:
           registry-url: 'https://npm.pkg.github.com/'
 
 
-      - name: Set MAVEN credentials (PAT or fallback)
-        env:
-          MAVEN_TOKEN_SECRET: ${{ secrets.MAVEN_TOKEN }}
-          MAVEN_USERNAME_SECRET: ${{ secrets.MAVEN_USERNAME }}
-          GITHUB_TOKEN_SECRET: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_ACTOR: ${{ github.actor }}
-        run: |
-          if [ -n "$MAVEN_TOKEN_SECRET" ]; then
-            echo "MAVEN_USER=$MAVEN_USERNAME_SECRET" >> $GITHUB_ENV
-            echo "MAVEN_TOKEN=$MAVEN_TOKEN_SECRET" >> $GITHUB_ENV
-          else
-            echo "MAVEN_USER=$GITHUB_ACTOR" >> $GITHUB_ENV
-            echo "MAVEN_TOKEN=$GITHUB_TOKEN_SECRET" >> $GITHUB_ENV
-          fi
-
       - name: Setup Java and Maven
         uses: actions/setup-java@v4
         with:
@@ -107,24 +92,7 @@ jobs:
           server-username: ${{ github.actor }}
           server-password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Override Maven settings with PAT (if provided)
-        env:
-          MAVEN_TOKEN: ${{ secrets.MAVEN_TOKEN }}
-          MAVEN_USER: ${{ secrets.MAVEN_USERNAME }}
-        run: |
-          if [ -n "$MAVEN_TOKEN" ]; then
-            mkdir -p "$HOME/.m2"
-            printf '%s\n' "<settings xmlns=\"http://maven.apache.org/SETTINGS/1.0.0\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd\">" > "$HOME/.m2/settings.xml"
-            printf '%s\n' "  <servers>" >> "$HOME/.m2/settings.xml"
-            printf '%s\n' "    <server>" >> "$HOME/.m2/settings.xml"
-            printf '%s\n' "      <id>github</id>" >> "$HOME/.m2/settings.xml"
-            printf '%s\n' "      <username>${MAVEN_USER}</username>" >> "$HOME/.m2/settings.xml"
-            printf '%s\n' "      <password>${MAVEN_TOKEN}</password>" >> "$HOME/.m2/settings.xml"
-            printf '%s\n' "    </server>" >> "$HOME/.m2/settings.xml"
-            printf '%s\n' "  </servers>" >> "$HOME/.m2/settings.xml"
-            printf '%s\n' "</settings>" >> "$HOME/.m2/settings.xml"
-          fi
-          fi
+      # Using GITHUB_TOKEN for Maven deploy (server id 'github' uses settings.xml from setup-java)
 
       - name: Verify tag matches package.json and pom.xml
         id: verify_versions
@@ -189,8 +157,7 @@ jobs:
         if: ${{ inputs.publish_maven == 'true' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          MAVEN_TOKEN: ${{ env.MAVEN_TOKEN }}
-          MAVEN_USER: ${{ env.MAVEN_USER }}
+          GITHUB_ACTOR: ${{ github.actor }}
         run: |
           set -e
           # Resolve GAV using Maven
@@ -198,8 +165,8 @@ jobs:
           ARTIFACT_ID=$(mvn -q -DforceStdout help:evaluate -Dexpression=project.artifactId)
           VERSION=$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version)
           GROUP_PATH=$(echo "$GROUP_ID" | sed 's/\./\//g')
-          AUTH_USER=${MAVEN_USER:-${GITHUB_ACTOR}}
-          AUTH_TOKEN=${MAVEN_TOKEN:-${GITHUB_TOKEN}}
+          AUTH_USER=${GITHUB_ACTOR}
+          AUTH_TOKEN=${GITHUB_TOKEN}
           URL="https://maven.pkg.github.com/${{ github.repository }}/$GROUP_PATH/$ARTIFACT_ID/$VERSION/$ARTIFACT_ID-$VERSION.pom"
           echo "Checking Maven registry for $URL"
           set +e
