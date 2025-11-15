@@ -34,13 +34,11 @@ jobs:
           ref: ${{ github.ref }}
 
       - name: Setup Node.js
-        uses: actions/setup-java@v4
+        uses: actions/setup-node@v4
         with:
-          java-version: ${{ env.JAVA_VERSION }}
-          distribution: 'temurin'
-          server-id: github
-          server-username: ${{ github.actor }}
-          server-password: ${{ secrets.GITHUB_TOKEN }}
+          node-version: ${{ env.NODE_VERSION }}
+          registry-url: https://npm.pkg.github.com
+          scope: '@theandiman'
 
       - name: Setup Maven
         uses: stCarolas/setup-maven@v5
@@ -55,8 +53,6 @@ jobs:
 
       - name: Publish to GitHub Packages (npm)
         run: npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish to GitHub Packages (Maven)
         run: |
