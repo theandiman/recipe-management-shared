@@ -39,11 +39,8 @@ jobs:
       - name: Run Java tests
         run: mvn test
 
-      - name: Build TypeScript
-        run: npm run build:ts
-
-      - name: Build Java
-        run: mvn compile
+      - name: Build all
+        run: npm run build
 
       - name: Verify builds
         run: |
