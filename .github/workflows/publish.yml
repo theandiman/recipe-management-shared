@@ -38,6 +38,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           registry-url: https://npm.pkg.github.com
+          scope: '@recipe-management'
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -49,18 +50,6 @@ jobs:
         uses: stCarolas/setup-maven@v5
         with:
           maven-version: 3.9.9
-
-      - name: Update package version
-        run: |
-          # Extract version from tag (remove 'v' prefix)
-          TAG_VERSION="${GITHUB_REF#refs/tags/v}"
-          CURRENT_VERSION=$(node -p "require('./package.json').version")
-          if [ "$TAG_VERSION" != "$CURRENT_VERSION" ]; then
-            echo "Updating package.json from $CURRENT_VERSION to $TAG_VERSION"
-            npm version $TAG_VERSION --no-git-tag-version
-          else
-            echo "Package.json already at version $TAG_VERSION"
-          fi
 
       - name: Install Node.js dependencies
         run: npm ci
@@ -117,7 +106,7 @@ jobs:
 
             ### TypeScript/JavaScript
             ```bash
-            npm install @theandiman/recipe-management-shared@${{ github.ref_name }} --registry https://npm.pkg.github.com
+            npm install @recipe-management/recipe-management-shared@${{ github.ref_name }} --registry https://npm.pkg.github.com
             ```
 
             ### Java
