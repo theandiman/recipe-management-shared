@@ -3,23 +3,6 @@ name: Manual Publish
 on:
   workflow_dispatch:
     inputs:
-      tag:
-        description: 'Tag to create and publish (e.g. v1.0.2)'
-        required: true
-        type: string
-      tag_message:
-        description: 'Optional tag message'
-        required: false
-        type: string
-      bump_type:
-        description: 'Version bump to perform after success (patch|minor|major)'
-        required: false
-        default: 'patch'
-        type: choice
-        options:
-          - patch
-          - minor
-          - major
       publish_npm:
         description: 'Whether to publish the npm package (true/false)'
         required: false
@@ -49,10 +32,21 @@ jobs:
           git config user.name "${{ github.actor }}"
           git config user.email "${{ github.actor }}@users.noreply.github.com"
 
+      - name: Determine version and tag
+        id: determine_tag
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if [ -z "$VERSION" ]; then
+            echo "Unable to determine version from package.json" >&2
+            exit 1
+          fi
+          TAG="v$VERSION"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
       - name: Ensure tag doesn't already exist remotely
         id: check_tag
         run: |
-          TAG=${{ inputs.tag }}
+          TAG=${{ steps.determine_tag.outputs.tag }}
           if git ls-remote --exit-code --tags origin "refs/tags/${TAG}"; then
             echo "Tag ${TAG} already exists on origin" >&2
             exit 1
@@ -60,11 +54,8 @@ jobs:
 
       - name: Create tag on HEAD and push
         run: |
-          TAG=${{ inputs.tag }}
-          MESSAGE="${{ inputs.tag_message }}"
-          if [ -z "$MESSAGE" ]; then
-            MESSAGE="Release ${TAG}"
-          fi
+          TAG=${{ steps.determine_tag.outputs.tag }}
+          MESSAGE="Release ${TAG}"
           git tag -a "$TAG" -m "$MESSAGE"
           git push origin "$TAG"
 
@@ -89,7 +80,7 @@ jobs:
       - name: Verify tag matches package.json and pom.xml
         id: verify_versions
         run: |
-          TAG=${{ inputs.tag }}
+          TAG=${{ steps.determine_tag.outputs.tag }}
           # Accept tags with or without a leading 'v'
           TAG_VER=${TAG#v}
           NPM_VER=$(node -p "require('./package.json').version")
@@ -137,12 +128,8 @@ jobs:
           set -e
           # Only bump when previous steps succeeded — check GITHUB_STEP_SUMMARY?
           # If publishing steps had failed, the job would have failed already unless they were 'if: always()'
-          BUMP_TYPE='${{ inputs.bump_type }}'
-          if [ -z "$BUMP_TYPE" ]; then
-            BUMP_TYPE=patch
-          fi
-          # Bump npm package version without adding a git tag
-          npm version $BUMP_TYPE --no-git-tag-version
+          # Bump npm package version without adding a git tag - patch only
+          npm version patch --no-git-tag-version
           NEW_VER=$(node -p "require('./package.json').version")
           echo "New npm version: $NEW_VER"
           # Set Maven version to match
