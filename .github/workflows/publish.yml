@@ -54,10 +54,8 @@ jobs:
         run: |
           # Extract version from tag (remove 'v' prefix)
           TAG_VERSION="${GITHUB_REF#refs/tags/v}"
-          # Append timestamp to make version unique
-          UNIQUE_VERSION="${TAG_VERSION}-$(date +%s)"
-          echo "Updating package.json to version $UNIQUE_VERSION"
-          npm version $UNIQUE_VERSION --no-git-tag-version
+          echo "Updating package.json to version $TAG_VERSION"
+          npm version $TAG_VERSION --no-git-tag-version
 
       - name: Install Node.js dependencies
         run: npm ci
