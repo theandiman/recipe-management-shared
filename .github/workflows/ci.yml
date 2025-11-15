@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  NODE_VERSION: '20'
+  JAVA_VERSION: '17'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Install Node.js dependencies
+        run: npm ci
+
+      - name: Run TypeScript tests
+        run: npm run test:ts
+
+      - name: Run Java tests
+        run: mvn test
+
+      - name: Build TypeScript
+        run: npm run build:ts
+
+      - name: Build Java
+        run: mvn compile
+
+      - name: Verify builds
+        run: |
+          # Check TypeScript output
+          if [ ! -d "dist" ]; then
+            echo "TypeScript build failed - dist directory not found"
+            exit 1
+          fi
+
+          # Check Java output
+          if [ ! -d "target/classes" ]; then
+            echo "Java build failed - target/classes directory not found"
+            exit 1
+          fi
+
+          echo "✅ All builds successful"
