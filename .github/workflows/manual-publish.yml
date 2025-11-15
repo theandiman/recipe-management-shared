@@ -114,20 +114,16 @@ jobs:
         run: |
           if [ -n "$MAVEN_TOKEN" ]; then
             mkdir -p "$HOME/.m2"
-            cat > "$HOME/.m2/settings.xml" <<EOF
-            <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
-                      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                      xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0
-                      https://maven.apache.org/xsd/settings-1.0.0.xsd">
-              <servers>
-                <server>
-                  <id>github</id>
-                  <username>${MAVEN_USER}</username>
-                  <password>${MAVEN_TOKEN}</password>
-                </server>
-              </servers>
-            </settings>
-            EOF
+            printf '%s\n' "<settings xmlns=\"http://maven.apache.org/SETTINGS/1.0.0\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd\">" > "$HOME/.m2/settings.xml"
+            printf '%s\n' "  <servers>" >> "$HOME/.m2/settings.xml"
+            printf '%s\n' "    <server>" >> "$HOME/.m2/settings.xml"
+            printf '%s\n' "      <id>github</id>" >> "$HOME/.m2/settings.xml"
+            printf '%s\n' "      <username>${MAVEN_USER}</username>" >> "$HOME/.m2/settings.xml"
+            printf '%s\n' "      <password>${MAVEN_TOKEN}</password>" >> "$HOME/.m2/settings.xml"
+            printf '%s\n' "    </server>" >> "$HOME/.m2/settings.xml"
+            printf '%s\n' "  </servers>" >> "$HOME/.m2/settings.xml"
+            printf '%s\n' "</settings>" >> "$HOME/.m2/settings.xml"
+          fi
           fi
 
       - name: Verify tag matches package.json and pom.xml
