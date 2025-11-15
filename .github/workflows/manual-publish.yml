@@ -208,8 +208,13 @@ jobs:
           npm version patch --no-git-tag-version
           NEW_VER=$(node -p "require('./package.json').version")
           echo "New npm version: $NEW_VER"
-          # Set Maven version to match
-          mvn -B org.codehaus.mojo:versions-maven-plugin:2.10:set -DnewVersion=$NEW_VER -DgenerateBackupPoms=false
+          # Set Maven version to match (use a modern plugin and provide a fallback)
+          if ! mvn -B org.codehaus.mojo:versions-maven-plugin:2.18.0:set -DnewVersion=$NEW_VER -DgenerateBackupPoms=false; then
+            echo "versions-maven-plugin failed to resolve; falling back to a conservative pom.xml edit"
+            cp pom.xml pom.xml.bak || true
+            perl -0777 -pe "s|(<project[^>]*>.*?<version>)(.*?)(</version>)|\1$NEW_VER\3|s" -i pom.xml
+            echo "Fallback POM modification performed"
+          fi
           git add package.json package-lock.json pom.xml
           git commit -m "chore(release): bump version to $NEW_VER [skip ci]" || echo "No changes to commit"
           git push origin HEAD:main
