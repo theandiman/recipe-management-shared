@@ -121,4 +121,4 @@ When adding new fields to the Recipe model:
 1. Update both TypeScript and Java versions
 2. Ensure backward compatibility
 3. Update this README
-4. Add conversion utilities if needed
+4. Add conversion utilities if needed# Test commit
