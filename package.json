@@ -1,6 +1,6 @@
 {
   "name": "@theandiman/recipe-management-shared",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Shared models and types for Recipe Management platform",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -12,8 +12,8 @@
     "test:ts": "jest",
     "test:java": "mvn test",
     "clean": "rm -rf dist target",
-  "prepublishOnly": "npm run build",
-  "publish:manual": "npm publish"
+    "prepublishOnly": "npm run build",
+    "publish:manual": "npm publish"
   },
   "keywords": [
     "recipe",
