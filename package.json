@@ -7,7 +7,7 @@
   "scripts": {
     "build": "tsc && npm run build:java",
     "build:ts": "tsc",
-    "build:java": "mvn compile",
+    "build:java": "mvn clean compile -U",
     "test": "npm run test:ts && npm run test:java",
     "test:ts": "jest",
     "test:java": "mvn test",
