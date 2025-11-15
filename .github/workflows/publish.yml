@@ -40,6 +40,12 @@ jobs:
           registry-url: https://npm.pkg.github.com
           scope: '@theandiman'
 
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+
       - name: Setup Maven
         uses: stCarolas/setup-maven@v5
         with:
