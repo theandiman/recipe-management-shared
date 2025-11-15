@@ -120,7 +120,7 @@ class NutritionValuesTest {
         NutritionValues nutritionValues = NutritionValues.fromMap(valuesMap);
 
         // Then
-        assertNotNull(nutritionalValues);
+        assertNotNull(nutritionValues);
         assertNull(nutritionValues.getCalories()); // Should return null for non-numbers
     }
 }
