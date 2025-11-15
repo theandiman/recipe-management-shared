@@ -7,7 +7,7 @@
   "scripts": {
     "build": "tsc && npm run build:java",
     "build:ts": "tsc",
-    "build:java": "mvn clean compile -U",
+    "build:java": "mvn clean compile -Dmaven.compiler.plugin.version=3.11.0",
     "test": "npm run test:ts && npm run test:java",
     "test:ts": "jest",
     "test:java": "mvn test",
