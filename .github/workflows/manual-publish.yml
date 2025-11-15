@@ -176,6 +176,11 @@ jobs:
             echo "Artifact $ARTIFACT_ID:$VERSION already exists in Maven registry. Aborting." >&2
             exit 1
           fi
+          # Diagnostic: print sanitized settings.xml and server username
+          echo "Sanity check: ~/.m2/settings.xml (password masked)"
+          sed -n '1,200p' $HOME/.m2/settings.xml | sed 's/<password>.*<\/password>/<password>***<\/password>/g' || true
+          echo "Maven server username:" && grep -oP '(?<=<username>).*?(?=</username>)' $HOME/.m2/settings.xml || true
+          echo "Test HEAD to artifact URL (HTTP status):"; curl -s -o /dev/null -w "%{http_code}" -u ${AUTH_USER}:${AUTH_TOKEN} "$URL" || true
           mvn -B -DskipTests deploy -s $HOME/.m2/settings.xml
 
       - name: Bump versions (post-publish)
