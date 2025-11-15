@@ -48,6 +48,9 @@ jobs:
           server-username: ${{ github.actor }}
           server-password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Clean Maven cache
+        run: rm -rf ~/.m2/repository/org/apache/maven/plugins/maven-compiler-plugin
+
       - name: Install Node.js dependencies
         run: npm ci
 
