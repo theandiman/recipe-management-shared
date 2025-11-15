@@ -103,11 +103,24 @@ jobs:
         if: ${{ inputs.publish_npm == 'true' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
+          # Determine package scope (owner) and validate existence
+          SCOPE=$(node -p "require('./package.json').name.split('/')[0].slice(1)")
+          echo "Publishing under scope: $SCOPE"
+          # Check org or user existence via GitHub API
+          if ! curl -sf -H "Authorization: token ${GITHUB_TOKEN}" "https://api.github.com/orgs/$SCOPE" >/dev/null; then
+            if ! curl -sf -H "Authorization: token ${GITHUB_TOKEN}" "https://api.github.com/users/$SCOPE" >/dev/null; then
+              echo "Package scope owner '$SCOPE' not found on GitHub. Please verify the package name scope in package.json or create the org/user." >&2
+              exit 1
+            fi
+          fi
+          # Prefer an NPM PAT (secrets.NPM_TOKEN) if present, otherwise fallback to GITHUB_TOKEN
+          # Prefer a provided NPM_TOKEN (PAT); otherwise fallback to GITHUB_TOKEN
+          AUTH_TOKEN="${NPM_TOKEN:-$GITHUB_TOKEN}"
           # Write npm auth to .npmrc for publishing to GitHub Packages
-          echo "@recipe-management:registry=https://npm.pkg.github.com/" >> .npmrc
-          echo "//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}" >> .npmrc
+          echo "@${SCOPE}:registry=https://npm.pkg.github.com/" >> .npmrc
+          echo "//npm.pkg.github.com/:_authToken=${AUTH_TOKEN}" >> .npmrc
           npm ci
           npm run build
           npm publish --registry=https://npm.pkg.github.com --access public
