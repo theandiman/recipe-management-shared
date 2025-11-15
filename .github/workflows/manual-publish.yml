@@ -1,0 +1,151 @@
+name: Manual Publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to create and publish (e.g. v1.0.2)'
+        required: true
+        type: string
+      tag_message:
+        description: 'Optional tag message'
+        required: false
+        type: string
+      bump_type:
+        description: 'Version bump to perform after success (patch|minor|major)'
+        required: false
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+      publish_npm:
+        description: 'Whether to publish the npm package (true/false)'
+        required: false
+        default: 'true'
+        type: string
+      publish_maven:
+        description: 'Whether to publish the Maven package (true/false)'
+        required: false
+        default: 'true'
+        type: string
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name "${{ github.actor }}"
+          git config user.email "${{ github.actor }}@users.noreply.github.com"
+
+      - name: Ensure tag doesn't already exist remotely
+        id: check_tag
+        run: |
+          TAG=${{ inputs.tag }}
+          if git ls-remote --exit-code --tags origin "refs/tags/${TAG}"; then
+            echo "Tag ${TAG} already exists on origin" >&2
+            exit 1
+          fi
+
+      - name: Create tag on HEAD and push
+        run: |
+          TAG=${{ inputs.tag }}
+          MESSAGE="${{ inputs.tag_message }}"
+          if [ -z "$MESSAGE" ]; then
+            MESSAGE="Release ${TAG}"
+          fi
+          git tag -a "$TAG" -m "$MESSAGE"
+          git push origin "$TAG"
+
+      - name: Verify tag matches package.json and pom.xml
+        id: verify_versions
+        run: |
+          TAG=${{ inputs.tag }}
+          # Accept tags with or without a leading 'v'
+          TAG_VER=${TAG#v}
+          NPM_VER=$(node -p "require('./package.json').version")
+          if [ "$NPM_VER" != "$TAG_VER" ]; then
+            echo "package.json version ($NPM_VER) does not match tag ($TAG_VER)" >&2
+            exit 1
+          fi
+          POM_VER=$(xmllint --xpath "/*[local-name()='project']/*[local-name()='version']/text()" pom.xml 2>/dev/null || true)
+          if [ "$POM_VER" = "" ]; then
+            # fallback: check in parent pom or other location - this script expects version to be present in pom.xml
+            echo "Unable to determine version from pom.xml" >&2
+            exit 1
+          fi
+          if [ "$POM_VER" != "$TAG_VER" ]; then
+            echo "pom.xml version ($POM_VER) does not match tag ($TAG_VER)" >&2
+            exit 1
+          fi
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          registry-url: 'https://npm.pkg.github.com/'
+
+      - name: Setup Java and Maven
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'maven'
+          # Configure Maven server credentials for GitHub Packages (serverId must match distributionManagement in pom.xml)
+          server-id: github
+          server-username: ${{ github.actor }}
+          server-password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish npm package
+        if: ${{ inputs.publish_npm == 'true' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Write npm auth to .npmrc for publishing to GitHub Packages
+          echo "@recipe-management:registry=https://npm.pkg.github.com/" >> .npmrc
+          echo "//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}" >> .npmrc
+          npm ci
+          npm run build
+          npm publish --registry=https://npm.pkg.github.com --access public
+
+      - name: Publish Maven package
+        if: ${{ inputs.publish_maven == 'true' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mvn -B -DskipTests deploy -s $HOME/.m2/settings.xml
+
+      - name: Bump versions (post-publish)
+        if: ${{ always() }}
+        id: bump
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          # Only bump when previous steps succeeded — check GITHUB_STEP_SUMMARY?
+          # If publishing steps had failed, the job would have failed already unless they were 'if: always()'
+          BUMP_TYPE='${{ inputs.bump_type }}'
+          if [ -z "$BUMP_TYPE" ]; then
+            BUMP_TYPE=patch
+          fi
+          # Bump npm package version without adding a git tag
+          npm version $BUMP_TYPE --no-git-tag-version
+          NEW_VER=$(node -p "require('./package.json').version")
+          echo "New npm version: $NEW_VER"
+          # Set Maven version to match
+          mvn -B org.codehaus.mojo:versions-maven-plugin:2.10:set -DnewVersion=$NEW_VER -DgenerateBackupPoms=false
+          git add package.json package-lock.json pom.xml
+          git commit -m "chore(release): bump version to $NEW_VER [skip ci]" || echo "No changes to commit"
+          git push origin HEAD:main
