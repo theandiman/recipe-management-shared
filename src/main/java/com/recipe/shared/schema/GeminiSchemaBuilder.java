@@ -78,7 +78,7 @@ public class GeminiSchemaBuilder {
     }
 
     public GeminiSchemaBuilder required(List<String> fieldNames) {
-        schema.put("required", new ArrayList<>(fieldNames));
+        schema.put("required", List.copyOf(fieldNames));
         return this;
     }
 
