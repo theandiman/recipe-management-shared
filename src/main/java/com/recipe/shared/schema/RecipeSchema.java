@@ -5,6 +5,8 @@ import static com.recipe.shared.schema.GeminiSchemaBuilder.*;
 import com.fasterxml.jackson.databind.BeanDescription;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.databind.introspect.BeanPropertyDefinition;
 import com.recipe.shared.model.Recipe;
 
@@ -14,6 +16,8 @@ import java.util.List;
  * Recipe schema generator for the shared model. Uses Jackson introspection to build a Gemini-compatible schema.
  */
 public final class RecipeSchema {
+
+    private static final Logger log = LoggerFactory.getLogger(RecipeSchema.class);
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
@@ -28,7 +32,8 @@ public final class RecipeSchema {
             buildFromBeanDescription(builder, desc, OBJECT_MAPPER, new java.util.HashSet<>());
             return builder.build();
         } catch (Exception e) {
-            // If introspection fails, return a manual schema to maintain behavior
+            // If introspection fails, log and return a manual schema to maintain behavior
+            log.warn("Failed to introspect Recipe class to build dynamic schema; using fallback manual schema", e);
         }
 
         // fallback explicit schema (ensure the AI service has a known schema)
@@ -95,8 +100,10 @@ public final class RecipeSchema {
     private static GeminiSchemaBuilder translateTypeToGemini(JavaType type, ObjectMapper om, java.util.Set<Class<?>> visited) {
         Class<?> raw = type.getRawClass();
         if (raw == String.class) return string();
-        if (Number.class.isAssignableFrom(raw) || raw.isPrimitive() && (raw == int.class || raw == long.class || raw == double.class || raw == float.class)) {
-            if (raw == Integer.class || raw == Long.class || raw == Short.class || raw == Byte.class || raw == int.class || raw == long.class || raw == short.class || raw == byte.class) return integer();
+        if (Number.class.isAssignableFrom(raw) || raw.isPrimitive() && (raw == int.class || raw == long.class || raw == double.class || raw == float.class || raw == short.class || raw == byte.class)) {
+            // Treat integral numeric types as integer schema types; all others (Double/Float) as number
+            java.util.Set<Class<?>> integerLike = java.util.Set.of(Integer.class, Long.class, Short.class, Byte.class, int.class, long.class, short.class, byte.class);
+            if (integerLike.contains(raw)) return integer();
             return number();
         }
         if (raw == Boolean.class || raw == boolean.class) return bool();
@@ -109,6 +116,7 @@ public final class RecipeSchema {
             return object();
         }
         if (!visited.add(raw)) {
+            // already visited - avoid cycles
             return object();
         }
         try {
@@ -118,6 +126,8 @@ public final class RecipeSchema {
             buildFromBeanDescription(nested, bd, om, visited);
             return nested;
         } catch (Exception e) {
+            // Log nested type introspection failures for easier debugging and fall back to an object schema
+            log.debug("Failed to introspect nested type '{}' for schema generation; falling back to object", raw == null ? "null" : raw.getName(), e);
             return object();
         }
     }
