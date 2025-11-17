@@ -22,11 +22,10 @@ public final class RecipeSchema {
     public static JsonSchema getSchema() {
         // Try to generate dynamically from the shared Recipe class
         try {
-            BeanDescription desc = OBJECT_MAPPER.getSerializationConfig().introspect(OBJECT_MAPPER.constructType(Recipe.class));
-            JavaType recipeType = om.constructType(Recipe.class);
-            BeanDescription desc = om.getSerializationConfig().introspect(recipeType);
+            JavaType recipeType = OBJECT_MAPPER.constructType(Recipe.class);
+            BeanDescription desc = OBJECT_MAPPER.getSerializationConfig().introspect(recipeType);
             GeminiSchemaBuilder builder = object();
-            buildFromBeanDescription(builder, desc, om, new java.util.HashSet<>());
+            buildFromBeanDescription(builder, desc, OBJECT_MAPPER, new java.util.HashSet<>());
             return builder.build();
         } catch (Exception e) {
             // If introspection fails, return a manual schema to maintain behavior
