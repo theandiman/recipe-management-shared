@@ -15,12 +15,14 @@ import java.util.List;
  */
 public final class RecipeSchema {
 
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
     private RecipeSchema() {}
 
     public static JsonSchema getSchema() {
         // Try to generate dynamically from the shared Recipe class
         try {
-            ObjectMapper om = new ObjectMapper();
+            BeanDescription desc = OBJECT_MAPPER.getSerializationConfig().introspect(OBJECT_MAPPER.constructType(Recipe.class));
             JavaType recipeType = om.constructType(Recipe.class);
             BeanDescription desc = om.getSerializationConfig().introspect(recipeType);
             GeminiSchemaBuilder builder = object();
