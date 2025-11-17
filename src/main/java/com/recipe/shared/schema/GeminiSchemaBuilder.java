@@ -11,7 +11,8 @@ public class GeminiSchemaBuilder {
     private final Map<String, Object> schema = new LinkedHashMap<>();
 
     private GeminiSchemaBuilder(GeminiSchemaType type) {
-        schema.put("type", type.name());
+        // The Gemini API expects lowercase type names (string, integer, etc.) in JSON Schema
+        schema.put("type", type.name().toLowerCase());
     }
 
     public static GeminiSchemaBuilder string() {

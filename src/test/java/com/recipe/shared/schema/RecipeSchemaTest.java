@@ -25,12 +25,12 @@ public class RecipeSchemaTest {
         @SuppressWarnings("unchecked")
         Map<String, Object> servings = (Map<String, Object>) props.get("servings");
         Assertions.assertNotNull(servings, "servings property must exist");
-        Assertions.assertEquals("INTEGER", servings.get("type"), "servings should be an INTEGER type");
+        Assertions.assertEquals("integer", servings.get("type"), "servings should be an integer type");
 
         @SuppressWarnings("unchecked")
         Map<String, Object> prepTimeMinutes = (Map<String, Object>) props.get("prepTimeMinutes");
         Assertions.assertNotNull(prepTimeMinutes, "prepTimeMinutes property must exist");
-        Assertions.assertEquals("INTEGER", prepTimeMinutes.get("type"), "prepTimeMinutes should be an INTEGER type");
+        Assertions.assertEquals("integer", prepTimeMinutes.get("type"), "prepTimeMinutes should be an integer type");
 
         // Verify nested nutritional info types
         @SuppressWarnings("unchecked")
@@ -48,6 +48,6 @@ public class RecipeSchemaTest {
         @SuppressWarnings("unchecked")
         Map<String, Object> calories = (Map<String, Object>) perServingProps.get("calories");
         Assertions.assertNotNull(calories, "calories should be present in perServing");
-        Assertions.assertEquals("NUMBER", calories.get("type"), "calories should be a NUMBER type");
+        Assertions.assertEquals("number", calories.get("type"), "calories should be a number type");
     }
 }
