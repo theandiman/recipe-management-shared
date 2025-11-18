@@ -98,7 +98,8 @@ public class GeminiSchemaBuilder {
 
     public static Map<String, Object> simpleProperty(GeminiSchemaType type, String description) {
         Map<String, Object> prop = new LinkedHashMap<>();
-        prop.put("type", type.name());
+        // Ensure the JSON Schema type is emitted in lowercase to match Gemini API expectations
+        prop.put("type", type.name().toLowerCase());
         prop.put("description", description);
         return Collections.unmodifiableMap(prop);
     }
