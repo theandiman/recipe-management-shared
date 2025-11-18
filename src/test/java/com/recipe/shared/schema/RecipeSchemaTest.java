@@ -49,5 +49,9 @@ public class RecipeSchemaTest {
         Map<String, Object> calories = (Map<String, Object>) perServingProps.get("calories");
         Assertions.assertNotNull(calories, "calories should be present in perServing");
         Assertions.assertEquals("number", calories.get("type"), "calories should be a number type");
+
+        // The schema should NOT contain imageGeneration as part of the response schema because
+        // images are generated separately by the image endpoint and shouldn't be validated by Gemini.
+        Assertions.assertFalse(props.containsKey("imageGeneration"), "imageGeneration should not be present in the schema");
     }
 }

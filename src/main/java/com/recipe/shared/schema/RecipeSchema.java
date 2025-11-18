@@ -56,10 +56,6 @@ public final class RecipeSchema {
             .property("reheating", string())
             .property("variations", array().items(string()));
 
-        GeminiSchemaBuilder imageGeneration = object()
-            .property("status", string())
-            .property("source", string())
-            .property("errorMessage", string());
 
         return object()
             .property("id", string())
@@ -79,7 +75,7 @@ public final class RecipeSchema {
             .property("nutritionalInfo", nutritionInfo)
             .property("tips", tips)
             .property("imageUrl", string())
-            .property("imageGeneration", imageGeneration)
+            /* imageGeneration intentionally omitted from the schema since images are generated separately via the dedicated endpoint */
             .property("source", string())
             .property("tags", array().items(string()))
             .property("dietaryRestrictions", array().items(string()))
@@ -92,13 +88,16 @@ public final class RecipeSchema {
         for (BeanPropertyDefinition propDef : props) {
             String name = propDef.getName();
             JavaType type = propDef.getPrimaryType();
-            GeminiSchemaBuilder propBuilder = translateTypeToGemini(type, om, visited);
+            // Skip imageGeneration entirely in the schema because images are generated separately.
+            if ("imageGeneration".equals(name)) continue;
+            GeminiSchemaBuilder propBuilder = translateTypeToGemini(name, type, om, visited);
             if (propBuilder != null) parentBuilder.property(name, propBuilder);
         }
     }
 
-    private static GeminiSchemaBuilder translateTypeToGemini(JavaType type, ObjectMapper om, java.util.Set<Class<?>> visited) {
+    private static GeminiSchemaBuilder translateTypeToGemini(String propName, JavaType type, ObjectMapper om, java.util.Set<Class<?>> visited) {
         Class<?> raw = type.getRawClass();
+        // No special-casing here; callers can skip properties by name when generating the schema
         if (raw == String.class) return string();
         if (Number.class.isAssignableFrom(raw) || raw.isPrimitive() && (raw == int.class || raw == long.class || raw == double.class || raw == float.class || raw == short.class || raw == byte.class)) {
             // Treat integral numeric types as integer schema types; all others (Double/Float) as number
@@ -113,7 +112,9 @@ public final class RecipeSchema {
             return array().items(items == null ? string() : items);
         }
         if (java.util.Map.class.isAssignableFrom(raw)) {
-            return object();
+            // For unspecified map types, default to an object schema with a generic string property to satisfy
+            // the Gemini API which expects non-empty properties for object types.
+            return object().property("value", string());
         }
         if (!visited.add(raw)) {
             // already visited - avoid cycles
@@ -130,5 +131,10 @@ public final class RecipeSchema {
             log.debug("Failed to introspect nested type '{}' for schema generation; falling back to object", raw == null ? "null" : raw.getName(), e);
             return object();
         }
+    }
+
+    // Backwards-compatible wrapper for callers that do not know the property name
+    private static GeminiSchemaBuilder translateTypeToGemini(JavaType type, ObjectMapper om, java.util.Set<Class<?>> visited) {
+        return translateTypeToGemini(null, type, om, visited);
     }
 }
