@@ -21,6 +21,9 @@ public final class RecipeSchema {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
+    // Cache for schema builders to handle repeated types efficiently
+    private static final java.util.Map<String, GeminiSchemaBuilder> schemaCache = new java.util.concurrent.ConcurrentHashMap<>();
+
     private RecipeSchema() {}
 
     public static JsonSchema getSchema() {
@@ -29,7 +32,7 @@ public final class RecipeSchema {
             JavaType recipeType = OBJECT_MAPPER.constructType(Recipe.class);
             BeanDescription desc = OBJECT_MAPPER.getSerializationConfig().introspect(recipeType);
             GeminiSchemaBuilder builder = object();
-            buildFromBeanDescription(builder, desc, OBJECT_MAPPER, new java.util.HashSet<>());
+            buildFromBeanDescription(builder, desc, OBJECT_MAPPER);
             return builder.build();
         } catch (Exception e) {
             // If introspection fails, log and return a manual schema to maintain behavior
@@ -83,19 +86,19 @@ public final class RecipeSchema {
             .build();
     }
 
-    private static void buildFromBeanDescription(GeminiSchemaBuilder parentBuilder, BeanDescription desc, ObjectMapper om, java.util.Set<Class<?>> visited) {
+    private static void buildFromBeanDescription(GeminiSchemaBuilder parentBuilder, BeanDescription desc, ObjectMapper om) {
         List<BeanPropertyDefinition> props = desc.findProperties();
         for (BeanPropertyDefinition propDef : props) {
             String name = propDef.getName();
             JavaType type = propDef.getPrimaryType();
             // Skip imageGeneration entirely in the schema because images are generated separately.
             if ("imageGeneration".equals(name)) continue;
-            GeminiSchemaBuilder propBuilder = translateTypeToGemini(name, type, om, visited);
+            GeminiSchemaBuilder propBuilder = translateTypeToGemini(name, type, om);
             if (propBuilder != null) parentBuilder.property(name, propBuilder);
         }
     }
 
-    private static GeminiSchemaBuilder translateTypeToGemini(String propName, JavaType type, ObjectMapper om, java.util.Set<Class<?>> visited) {
+    private static GeminiSchemaBuilder translateTypeToGemini(String propName, JavaType type, ObjectMapper om) {
         if ("imageGeneration".equals(propName)) return null;
         Class<?> raw = type.getRawClass();
         // No special-casing here; callers can skip properties by name when generating the schema
@@ -109,7 +112,7 @@ public final class RecipeSchema {
         if (raw == Boolean.class || raw == boolean.class) return bool();
         if (java.util.Collection.class.isAssignableFrom(raw) || raw.isArray()) {
             JavaType content = type.getContentType();
-            GeminiSchemaBuilder items = content == null ? string() : translateTypeToGemini(content, om, visited);
+            GeminiSchemaBuilder items = content == null ? string() : translateTypeToGemini(null, content, om);
             return array().items(items == null ? string() : items);
         }
         if (java.util.Map.class.isAssignableFrom(raw)) {
@@ -117,25 +120,23 @@ public final class RecipeSchema {
             // the Gemini API which expects non-empty properties for object types.
             return object().property("value", string());
         }
-        if (!visited.add(raw)) {
-            // already visited - avoid cycles
-            return object();
+        // Check cache first
+        String className = raw.getName();
+        GeminiSchemaBuilder cached = schemaCache.get(className);
+        if (cached != null) {
+            return cached;
         }
         try {
             JavaType jt = om.constructType(raw);
             BeanDescription bd = om.getSerializationConfig().introspect(jt);
             GeminiSchemaBuilder nested = object();
-            buildFromBeanDescription(nested, bd, om, visited);
+            buildFromBeanDescription(nested, bd, om);
+            schemaCache.put(className, nested);
             return nested;
         } catch (Exception e) {
             // Log nested type introspection failures for easier debugging and fall back to an object schema
             log.debug("Failed to introspect nested type '{}' for schema generation; falling back to object", raw == null ? "null" : raw.getName(), e);
             return object();
         }
-    }
-
-    // Backwards-compatible wrapper for callers that do not know the property name
-    private static GeminiSchemaBuilder translateTypeToGemini(JavaType type, ObjectMapper om, java.util.Set<Class<?>> visited) {
-        return translateTypeToGemini(null, type, om, visited);
     }
 }
