@@ -110,6 +110,10 @@ public final class RecipeSchema {
             return number();
         }
         if (raw == Boolean.class || raw == boolean.class) return bool();
+        // Special handling for timestamp types - treat as strings
+        if (raw == java.time.Instant.class || raw == java.time.LocalDateTime.class || raw == java.time.ZonedDateTime.class || raw == java.util.Date.class) {
+            return string();
+        }
         if (java.util.Collection.class.isAssignableFrom(raw) || raw.isArray()) {
             JavaType content = type.getContentType();
             GeminiSchemaBuilder items = content == null ? string() : translateTypeToGemini(null, content, om);
