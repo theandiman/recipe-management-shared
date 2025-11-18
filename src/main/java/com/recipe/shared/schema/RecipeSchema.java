@@ -96,6 +96,7 @@ public final class RecipeSchema {
     }
 
     private static GeminiSchemaBuilder translateTypeToGemini(String propName, JavaType type, ObjectMapper om, java.util.Set<Class<?>> visited) {
+        if ("imageGeneration".equals(propName)) return null;
         Class<?> raw = type.getRawClass();
         // No special-casing here; callers can skip properties by name when generating the schema
         if (raw == String.class) return string();
