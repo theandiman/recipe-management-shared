@@ -33,7 +33,7 @@
     "ts-jest": "^29.0.0"
   },
   "dependencies": {
-    "reflect-metadata": "^0.1.13"
+    "reflect-metadata": "^0.2.2"
   },
   "files": [
     "dist/**/*",
