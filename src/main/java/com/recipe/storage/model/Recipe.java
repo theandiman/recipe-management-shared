@@ -26,22 +26,25 @@ public class Recipe {
   private Integer prepTime; // in minutes
   private Integer cookTime; // in minutes
   private Integer servings;
-  
+
   // Nutrition information
   private Map<String, Object> nutrition;
-  
+
   // Tips from AI generation
   private Map<String, List<String>> tips;
-  
+
   // Image URL if generated
   private String imageUrl;
-  
+
   // Metadata
   private String source; // e.g., "ai-generated", "manual"
   private Instant createdAt;
   private Instant updatedAt;
-  
+
   // Tags for categorization
   private List<String> tags;
   private List<String> dietaryRestrictions;
+
+  // Sharing
+  private boolean isPublic;
 }

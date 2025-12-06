@@ -39,7 +39,7 @@ public class RecipeService {
    * Save a new recipe to Firestore.
    *
    * @param request The recipe creation request
-   * @param userId The Firebase user ID of the recipe creator
+   * @param userId  The Firebase user ID of the recipe creator
    * @return The saved recipe with generated ID
    */
   public RecipeResponse saveRecipe(CreateRecipeRequest request, String userId) {
@@ -47,7 +47,7 @@ public class RecipeService {
       log.warn("Firestore not configured - running in test mode");
       return createMockResponse(request, userId);
     }
-    
+
     try {
       String recipeId = UUID.randomUUID().toString();
       Instant now = Instant.now();
@@ -67,14 +67,17 @@ public class RecipeService {
           .imageUrl(request.getImageUrl())
           .source(request.getSource())
           .tags(request.getTags())
+          .source(request.getSource())
+          .tags(request.getTags())
           .dietaryRestrictions(request.getDietaryRestrictions())
+          .isPublic(request.isPublic())
           .createdAt(now)
           .updatedAt(now)
           .build();
 
       DocumentReference docRef = firestore.collection(recipesCollection).document(recipeId);
       ApiFuture<WriteResult> future = docRef.set(recipe);
-      
+
       // Wait for the write to complete
       WriteResult result = future.get();
       log.info("Recipe saved with ID: {} at {}", recipeId, result.getUpdateTime());
@@ -92,7 +95,7 @@ public class RecipeService {
   private RecipeResponse createMockResponse(CreateRecipeRequest request, String userId) {
     String recipeId = UUID.randomUUID().toString();
     Instant now = Instant.now();
-    
+
     Recipe recipe = Recipe.builder()
         .id(recipeId)
         .userId(userId)
@@ -108,11 +111,14 @@ public class RecipeService {
         .imageUrl(request.getImageUrl())
         .source(request.getSource())
         .tags(request.getTags())
+        .source(request.getSource())
+        .tags(request.getTags())
         .dietaryRestrictions(request.getDietaryRestrictions())
+        .isPublic(request.isPublic())
         .createdAt(now)
         .updatedAt(now)
         .build();
-    
+
     log.info("Mock recipe created with ID: {}", recipeId);
     return mapToResponse(recipe);
   }
@@ -128,26 +134,26 @@ public class RecipeService {
       log.warn("Firestore not configured - returning empty list");
       return new ArrayList<>();
     }
-    
+
     try {
       // Note: Removed orderBy to avoid needing composite index
       // Recipes are returned in document creation order
       // TODO: Add composite index and re-enable orderBy for better UX
       Query query = firestore.collection(recipesCollection)
           .whereEqualTo("userId", userId);
-      
+
       ApiFuture<QuerySnapshot> future = query.get();
       QuerySnapshot querySnapshot = future.get();
-      
+
       List<RecipeResponse> recipes = new ArrayList<>();
       querySnapshot.getDocuments().forEach(doc -> {
         Recipe recipe = doc.toObject(Recipe.class);
         recipes.add(mapToResponse(recipe));
       });
-      
+
       // Sort in-memory by createdAt (newest first)
       recipes.sort((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()));
-      
+
       log.info("Found {} recipes for user {}", recipes.size(), userId);
       return recipes;
     } catch (InterruptedException | ExecutionException e) {
@@ -157,43 +163,80 @@ public class RecipeService {
   }
 
   /**
+   * Get all public recipes.
+   *
+   * @return List of public recipes
+   */
+  public List<RecipeResponse> getPublicRecipes() {
+    if (firestore == null) {
+      log.warn("Firestore not configured - returning empty list");
+      return new ArrayList<>();
+    }
+
+    try {
+      // TODO: Add composite index on isPublic + createdAt for better sorting
+      Query query = firestore.collection(recipesCollection)
+          .whereEqualTo("isPublic", true);
+
+      ApiFuture<QuerySnapshot> future = query.get();
+      QuerySnapshot querySnapshot = future.get();
+
+      List<RecipeResponse> recipes = new ArrayList<>();
+      querySnapshot.getDocuments().forEach(doc -> {
+        Recipe recipe = doc.toObject(Recipe.class);
+        recipes.add(mapToResponse(recipe));
+      });
+
+      // Sort in-memory by createdAt (newest first)
+      recipes.sort((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()));
+
+      log.info("Found {} public recipes", recipes.size());
+      return recipes;
+    } catch (InterruptedException | ExecutionException e) {
+      log.error("Error fetching public recipes from Firestore", e);
+      throw new RuntimeException("Failed to fetch public recipes", e);
+    }
+  }
+
+  /**
    * Get a specific recipe by ID.
    *
    * @param recipeId The recipe ID
-   * @param userId The Firebase user ID (for authorization)
+   * @param userId   The Firebase user ID (for authorization)
    * @return The recipe if found and user has access
-   * @throws ResponseStatusException if recipe not found or user doesn't have access
+   * @throws ResponseStatusException if recipe not found or user doesn't have
+   *                                 access
    */
   public RecipeResponse getRecipe(String recipeId, String userId) {
     if (firestore == null) {
       log.warn("Firestore not configured - cannot fetch recipe");
       throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found");
     }
-    
+
     try {
       DocumentReference docRef = firestore.collection(recipesCollection).document(recipeId);
       ApiFuture<DocumentSnapshot> future = docRef.get();
       DocumentSnapshot document = future.get();
-      
+
       if (!document.exists()) {
         log.warn("Recipe not found: {}", recipeId);
         throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found");
       }
-      
+
       Recipe recipe = document.toObject(Recipe.class);
       if (recipe == null) {
         log.error("Failed to deserialize recipe: {}", recipeId);
         throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
             "Failed to load recipe");
       }
-      
-      // Verify user owns this recipe
-      if (!userId.equals(recipe.getUserId())) {
-        log.warn("User {} attempted to access recipe {} owned by {}", 
+
+      // Verify user has access (owner or public)
+      if (!userId.equals(recipe.getUserId()) && !recipe.isPublic()) {
+        log.warn("User {} attempted to access private recipe {} owned by {}",
             userId, recipeId, recipe.getUserId());
         throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
       }
-      
+
       log.info("Retrieved recipe {} for user {}", recipeId, userId);
       return mapToResponse(recipe);
     } catch (InterruptedException | ExecutionException e) {
@@ -206,43 +249,44 @@ public class RecipeService {
    * Delete a recipe by ID.
    *
    * @param recipeId The recipe ID
-   * @param userId The Firebase user ID (for authorization)
-   * @throws ResponseStatusException if recipe not found or user doesn't have access
+   * @param userId   The Firebase user ID (for authorization)
+   * @throws ResponseStatusException if recipe not found or user doesn't have
+   *                                 access
    */
   public void deleteRecipe(String recipeId, String userId) {
     if (firestore == null) {
       log.warn("Firestore not configured - cannot delete recipe");
       throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found");
     }
-    
+
     try {
       DocumentReference docRef = firestore.collection(recipesCollection).document(recipeId);
       ApiFuture<DocumentSnapshot> future = docRef.get();
       DocumentSnapshot document = future.get();
-      
+
       if (!document.exists()) {
         log.warn("Recipe not found for deletion: {}", recipeId);
         throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found");
       }
-      
+
       Recipe recipe = document.toObject(Recipe.class);
       if (recipe == null) {
         log.error("Failed to deserialize recipe for deletion: {}", recipeId);
         throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
             "Failed to load recipe");
       }
-      
+
       // Verify user owns this recipe
       if (!userId.equals(recipe.getUserId())) {
-        log.warn("User {} attempted to delete recipe {} owned by {}", 
+        log.warn("User {} attempted to delete recipe {} owned by {}",
             userId, recipeId, recipe.getUserId());
         throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
       }
-      
+
       // Delete the document
       ApiFuture<WriteResult> deleteFuture = docRef.delete();
       WriteResult result = deleteFuture.get();
-      
+
       log.info("Deleted recipe {} for user {} at {}", recipeId, userId, result.getUpdateTime());
     } catch (InterruptedException | ExecutionException e) {
       log.error("Error deleting recipe from Firestore", e);
@@ -272,6 +316,7 @@ public class RecipeService {
         .updatedAt(recipe.getUpdatedAt())
         .tags(recipe.getTags())
         .dietaryRestrictions(recipe.getDietaryRestrictions())
+        .isPublic(recipe.isPublic())
         .build();
   }
 }

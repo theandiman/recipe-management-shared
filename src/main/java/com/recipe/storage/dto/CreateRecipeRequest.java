@@ -106,4 +106,11 @@ public class CreateRecipeRequest {
       example = "[\"Gluten-Free\", \"Vegetarian\"]"
   )
   private List<String> dietaryRestrictions;
+
+  @Schema(
+      description = "Whether the recipe is shared with everyone",
+      example = "true",
+      defaultValue = "false"
+  )
+  private boolean isPublic;
 }
