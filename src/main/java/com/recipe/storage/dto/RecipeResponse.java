@@ -110,4 +110,10 @@ public class RecipeResponse {
       example = "[\"Gluten-Free\", \"Vegetarian\"]"
   )
   private List<String> dietaryRestrictions;
+
+  @Schema(
+      description = "Whether the recipe is shared with everyone",
+      example = "true"
+  )
+  private boolean isPublic;
 }

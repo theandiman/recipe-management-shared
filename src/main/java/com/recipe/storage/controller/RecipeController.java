@@ -119,6 +119,31 @@ public class RecipeController {
   }
 
   /**
+   * Get all public recipes.
+   * Does NOT require authentication.
+   *
+   * @return List of public recipes
+   */
+  @GetMapping("/public")
+  @Operation(
+      summary = "Get all public recipes",
+      description = "Retrieves all recipes that have been marked as public. "
+          + "No authentication required."
+  )
+  @ApiResponses(value = {
+      @ApiResponse(
+          responseCode = "200",
+          description = "Public recipes retrieved successfully",
+          content = @Content(schema = @Schema(implementation = RecipeResponse.class))
+      )
+  })
+  public ResponseEntity<List<RecipeResponse>> getPublicRecipes() {
+    log.info("Fetching public recipes");
+    List<RecipeResponse> recipes = recipeService.getPublicRecipes();
+    return ResponseEntity.ok(recipes);
+  }
+
+  /**
    * Get a specific recipe by ID.
    * Requires Firebase authentication and user must own the recipe.
    *
