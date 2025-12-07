@@ -66,7 +66,7 @@ public class Recipe {
     private List<String> tags;
     private List<String> dietaryRestrictions;
 
-    private boolean isPublic;
+    private boolean isPublic; // Whether recipe is publicly visible to other users
 
     // AI-specific fields (optional, for AI service compatibility)
     private Map<String, Object> imageGeneration; // AI image generation metadata
