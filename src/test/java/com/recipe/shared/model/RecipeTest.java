@@ -35,6 +35,7 @@ class RecipeTest {
                 .source("manual")
                 .createdAt(Instant.parse("2024-01-01T10:00:00Z"))
                 .tags(Arrays.asList("breakfast", "easy"))
+                .isPublic(true)
                 .build();
 
         // When
@@ -52,6 +53,7 @@ class RecipeTest {
         assertEquals(recipe.getServings(), deserialized.getServings());
         assertEquals(recipe.getSource(), deserialized.getSource());
         assertEquals(recipe.getTags(), deserialized.getTags());
+        assertEquals(recipe.isPublic(), deserialized.isPublic());
     }
 
     @Test
