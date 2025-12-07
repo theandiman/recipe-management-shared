@@ -82,6 +82,7 @@ public final class RecipeSchema {
             .property("source", string())
             .property("tags", array().items(string()))
             .property("dietaryRestrictions", array().items(string()))
+            .property("isPublic", bool())
             .required("recipeName", "ingredients", "instructions", "servings")
             .build();
     }
