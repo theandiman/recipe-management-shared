@@ -48,6 +48,8 @@ export interface Recipe {
   tags?: string[];
   dietaryRestrictions?: string[];
 
+  isPublic?: boolean;
+
   // AI-specific fields (optional, for AI service compatibility)
   imageGeneration?: Record<string, any>; // AI image generation metadata
 }

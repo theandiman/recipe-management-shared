@@ -17,7 +17,7 @@ import java.util.Map;
  * between frontend, AI service, and storage service.
  */
 @Data
-@Builder
+@Builder(toBuilder = true)
 @NoArgsConstructor
 @AllArgsConstructor
 public class Recipe {
@@ -65,6 +65,8 @@ public class Recipe {
     // Categorization
     private List<String> tags;
     private List<String> dietaryRestrictions;
+
+    private boolean isPublic; // Whether recipe is publicly visible to other users
 
     // AI-specific fields (optional, for AI service compatibility)
     private Map<String, Object> imageGeneration; // AI image generation metadata
