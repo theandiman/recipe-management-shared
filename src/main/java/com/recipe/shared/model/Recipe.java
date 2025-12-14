@@ -66,6 +66,7 @@ public class Recipe {
     private List<String> tags;
     private List<String> dietaryRestrictions;
 
+    @JsonProperty("isPublic")
     private boolean isPublic; // Whether recipe is publicly visible to other users
 
     // AI-specific fields (optional, for AI service compatibility)
