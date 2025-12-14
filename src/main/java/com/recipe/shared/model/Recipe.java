@@ -67,9 +67,9 @@ public class Recipe {
     private List<String> tags;
     private List<String> dietaryRestrictions;
 
-    @JsonProperty("isPublic")  // For Jackson (REST API responses)
-    @PropertyName("isPublic")   // For Firestore serialization/deserialization
-    private boolean isPublic; // Whether recipe is publicly visible to other users
+    @JsonProperty("isPublic")  // For Jackson (REST API responses) - maintains API compatibility
+    @PropertyName("isPublic")   // For Firestore field name
+    private boolean publicRecipe; // Whether recipe is publicly visible to other users (renamed from isPublic to avoid Lombok getter/setter conflicts)
 
     // AI-specific fields (optional, for AI service compatibility)
     private Map<String, Object> imageGeneration; // AI image generation metadata
