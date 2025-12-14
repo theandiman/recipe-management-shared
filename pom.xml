@@ -50,6 +50,14 @@
             <version>3.0.2</version>
         </dependency>
 
+        <!-- Firestore annotations for proper field mapping -->
+        <dependency>
+            <groupId>com.google.cloud</groupId>
+            <artifactId>google-cloud-firestore</artifactId>
+            <version>3.26.4</version>
+            <scope>provided</scope>
+        </dependency>
+
         <!-- Test dependencies -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>

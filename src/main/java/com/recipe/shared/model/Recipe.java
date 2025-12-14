@@ -2,6 +2,7 @@ package com.recipe.shared.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.cloud.firestore.annotation.PropertyName;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -66,7 +67,8 @@ public class Recipe {
     private List<String> tags;
     private List<String> dietaryRestrictions;
 
-    @JsonProperty("isPublic")
+    @JsonProperty("isPublic")  // For Jackson (REST API responses)
+    @PropertyName("isPublic")   // For Firestore serialization/deserialization
     private boolean isPublic; // Whether recipe is publicly visible to other users
 
     // AI-specific fields (optional, for AI service compatibility)
