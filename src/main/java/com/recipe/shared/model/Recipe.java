@@ -2,10 +2,13 @@ package com.recipe.shared.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.cloud.firestore.annotation.PropertyName;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.Instant;
 import java.util.List;
@@ -17,7 +20,7 @@ import java.util.Map;
  * between frontend, AI service, and storage service.
  */
 @Data
-@Builder
+@Builder(toBuilder = true)
 @NoArgsConstructor
 @AllArgsConstructor
 public class Recipe {
@@ -65,6 +68,11 @@ public class Recipe {
     // Categorization
     private List<String> tags;
     private List<String> dietaryRestrictions;
+
+    @JsonProperty("isPublic")  // For Jackson (REST API responses) - maintains API compatibility
+    @Getter(onMethod_ = {@PropertyName("isPublic")})  // Apply @PropertyName to the generated getter
+    @Setter(onMethod_ = {@PropertyName("isPublic")})  // Apply @PropertyName to the generated setter
+    private boolean publicRecipe; // Whether recipe is publicly visible to other users (renamed from isPublic to avoid Lombok getter/setter conflicts)
 
     // AI-specific fields (optional, for AI service compatibility)
     private Map<String, Object> imageGeneration; // AI image generation metadata
