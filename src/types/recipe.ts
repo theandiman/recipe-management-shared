@@ -77,6 +77,33 @@ export interface RecipeTips {
 }
 
 /**
+ * Request payload for AI field suggestions endpoint.
+ * Null/undefined fields are treated as missing and eligible for suggestions.
+ */
+export interface FieldSuggestionRequest {
+  recipeName?: string;
+  description?: string;
+  prepTime?: string;
+  cookTime?: string;
+  servings?: number | string;
+  tags?: string[];
+  ingredients?: string[];
+  instructions?: string[];
+}
+
+/** A single AI-generated suggestion for one recipe field. */
+export interface FieldSuggestion {
+  field: string;
+  suggestedValue: string;
+  reason: string;
+}
+
+/** Response envelope returned by POST /api/recipes/suggest-fields. */
+export interface FieldSuggestionsResponse {
+  suggestions: FieldSuggestion[];
+}
+
+/**
  * Utility functions for working with shared recipe models
  */
 export class RecipeUtils {
