@@ -3,20 +3,37 @@ name: Manual Publish
 on:
   workflow_dispatch:
     inputs:
+      version_bump:
+        description: 'Version bump type (patch, minor, major, custom, or none)'
+        required: false
+        default: 'patch'
+        type: choice
+        options:
+          - 'patch'
+          - 'minor'
+          - 'major'
+          - 'custom'
+          - 'none'
+      custom_version:
+        description: 'Explicit version string if version_bump is custom (e.g. 1.0.25)'
+        required: false
+        default: ''
+        type: string
       publish_npm:
-        description: 'Whether to publish the npm package (true/false)'
+        description: 'Whether to publish the npm package'
         required: false
-        default: 'true'
-        type: string
+        default: true
+        type: boolean
       publish_maven:
-        description: 'Whether to publish the Maven package (true/false)'
+        description: 'Whether to publish the Maven package'
         required: false
-        default: 'true'
-        type: string
+        default: true
+        type: boolean
 
 permissions:
   contents: write
   packages: write
+  pull-requests: write
 
 jobs:
   publish:
@@ -29,27 +46,52 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Configure Git
         run: |
-          git config user.name "${{ github.actor }}"
-          git config user.email "${{ github.actor }}@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Determine version and tag
-        id: determine_tag
+      - name: Calculate and set target version
+        id: versioning
         run: |
-          VERSION=$(node -p "require('./package.json').version")
-          if [ -z "$VERSION" ]; then
-            echo "Unable to determine version from package.json" >&2
-            exit 1
+          BUMP="${{ inputs.version_bump }}"
+          CUSTOM="${{ inputs.custom_version }}"
+          
+          CURRENT_VER=$(node -p "require('./package.json').version")
+          echo "Current version in repository: $CURRENT_VER"
+          
+          if [ "$BUMP" = "patch" ] || [ "$BUMP" = "minor" ] || [ "$BUMP" = "major" ]; then
+            npm version "$BUMP" --no-git-tag-version
+            NEW_VER=$(node -p "require('./package.json').version")
+          elif [ "$BUMP" = "custom" ]; then
+            if [ -z "$CUSTOM" ]; then
+              echo "Error: custom_version input is required when version_bump is custom" >&2
+              exit 1
+            fi
+            npm version "$CUSTOM" --no-git-tag-version
+            NEW_VER="$CUSTOM"
+          else
+            NEW_VER="$CURRENT_VER"
           fi
-          TAG="v$VERSION"
-          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+          echo "Target version to publish: $NEW_VER"
+          
+          # Sync pom.xml version
+          if ! mvn -B org.codehaus.mojo:versions-maven-plugin:2.18.0:set -DnewVersion="$NEW_VER" -DgenerateBackupPoms=false; then
+            echo "versions-maven-plugin failed; performing pom.xml edit fallback"
+            perl -0777 -pe "s|(<project[^>]*>.*?<version>)(.*?)(</version>)|\1$NEW_VER\3|s" -i pom.xml
+          fi
+          
+          TAG="v$NEW_VER"
+          echo "version=$NEW_VER" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "is_bumped=$([ "$NEW_VER" != "$CURRENT_VER" ] && echo 'true' || echo 'false')" >> "$GITHUB_OUTPUT"
 
       - name: Ensure tag doesn't already exist remotely
-        id: check_tag
         run: |
-          TAG=${{ steps.determine_tag.outputs.tag }}
+          TAG="${{ steps.versioning.outputs.tag }}"
           if git ls-remote --exit-code --tags origin "refs/tags/${TAG}"; then
             echo "Tag ${TAG} already exists on origin" >&2
             exit 1
@@ -57,30 +99,16 @@ jobs:
 
       - name: Create tag on HEAD and push
         run: |
-          TAG=${{ steps.determine_tag.outputs.tag }}
+          TAG="${{ steps.versioning.outputs.tag }}"
           MESSAGE="Release ${TAG}"
           git tag -a "$TAG" -m "$MESSAGE"
           git push origin "$TAG"
-
-      - name: Re-check registry for version (race prevention)
-        run: |
-          PACKAGE_NAME=$(node -p "require('./package.json').name")
-          VERSION_TO_PUBLISH=$(node -p "require('./package.json').version")
-          echo "Re-checking registry for $PACKAGE_NAME@$VERSION_TO_PUBLISH"
-          set +e
-          EXISTING=$(npm view "${PACKAGE_NAME}@${VERSION_TO_PUBLISH}" version --registry=https://npm.pkg.github.com || true)
-          set -e
-          if [ "${EXISTING}" = "${VERSION_TO_PUBLISH}" ]; then
-            echo "Version ${VERSION_TO_PUBLISH} was published since the initial check. Aborting." >&2
-            exit 1
-          fi
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20.x'
           registry-url: 'https://npm.pkg.github.com/'
-
 
       - name: Setup Java and Maven
         uses: actions/setup-java@v4
@@ -92,129 +120,93 @@ jobs:
           server-username: ${{ github.actor }}
           server-password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Using GITHUB_TOKEN for Maven deploy (server id 'github' uses settings.xml from setup-java)
-
-      - name: Verify tag matches package.json and pom.xml
-        id: verify_versions
+      - name: Verify versions match
         run: |
-          TAG=${{ steps.determine_tag.outputs.tag }}
-          # Accept tags with or without a leading 'v'
-          TAG_VER=${TAG#v}
+          TAG="${{ steps.versioning.outputs.tag }}"
+          TAG_VER="${TAG#v}"
           NPM_VER=$(node -p "require('./package.json').version")
-          if [ "$NPM_VER" != "$TAG_VER" ]; then
-            echo "package.json version ($NPM_VER) does not match tag ($TAG_VER)" >&2
-            exit 1
-          fi
-          # Use maven to reliably query the version from pom.xml
           POM_VER=$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version)
-          if [ -z "$POM_VER" ]; then
-            echo "Unable to determine version from pom.xml via Maven help:evaluate" >&2
-            exit 1
-          fi
-          if [ "$POM_VER" != "$TAG_VER" ]; then
-            echo "pom.xml version ($POM_VER) does not match tag ($TAG_VER)" >&2
+          
+          if [ "$NPM_VER" != "$TAG_VER" ] || [ "$POM_VER" != "$TAG_VER" ]; then
+            echo "Mismatch: Tag ($TAG_VER), package.json ($NPM_VER), pom.xml ($POM_VER)" >&2
             exit 1
           fi
 
       - name: Publish npm package
-        if: ${{ inputs.publish_npm == 'true' }}
+        if: ${{ inputs.publish_npm }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          # Determine package scope (owner) and validate existence
           SCOPE=$(node -p "require('./package.json').name.split('/')[0].slice(1)")
-          echo "Publishing under scope: $SCOPE"
-          # Check org or user existence via GitHub API
-          if ! curl -sf -H "Authorization: token ${GITHUB_TOKEN}" "https://api.github.com/orgs/$SCOPE" >/dev/null; then
-            if ! curl -sf -H "Authorization: token ${GITHUB_TOKEN}" "https://api.github.com/users/$SCOPE" >/dev/null; then
-              echo "Package scope owner '$SCOPE' not found on GitHub. Please verify the package name scope in package.json or create the org/user." >&2
-              exit 1
-            fi
-          fi
-          # Prefer an NPM PAT (secrets.NPM_TOKEN) if present, otherwise fallback to GITHUB_TOKEN
-          # Prefer a provided NPM_TOKEN (PAT); otherwise fallback to GITHUB_TOKEN
           AUTH_TOKEN="${NPM_TOKEN:-$GITHUB_TOKEN}"
-          # Write npm auth to .npmrc for publishing to GitHub Packages
+          
           echo "@${SCOPE}:registry=https://npm.pkg.github.com/" >> .npmrc
           echo "//npm.pkg.github.com/:_authToken=${AUTH_TOKEN}" >> .npmrc
+          
           npm ci
           npm run build
-          # Check if the version already exists in GitHub Packages to avoid re-publish conflicts
+          
           PACKAGE_NAME=$(node -p "require('./package.json').name")
-          VERSION_TO_PUBLISH=$(node -p "require('./package.json').version")
-          echo "Checking registry for $PACKAGE_NAME@$VERSION_TO_PUBLISH"
+          VERSION_TO_PUBLISH="${{ steps.versioning.outputs.version }}"
+          
           set +e
           EXISTING=$(npm view "${PACKAGE_NAME}@${VERSION_TO_PUBLISH}" version --registry=https://npm.pkg.github.com || true)
           set -e
           if [ "${EXISTING}" = "${VERSION_TO_PUBLISH}" ]; then
-            echo "Version ${VERSION_TO_PUBLISH} already published to registry. Aborting publish." >&2
+            echo "Version ${VERSION_TO_PUBLISH} already published to NPM registry. Aborting." >&2
             exit 1
           fi
+          
           npm publish --registry=https://npm.pkg.github.com --access public
 
       - name: Publish Maven package
-        if: ${{ inputs.publish_maven == 'true' }}
+        if: ${{ inputs.publish_maven }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_ACTOR: ${{ github.actor }}
         run: |
-          set -e
-          # Resolve GAV using Maven
           GROUP_ID=$(mvn -q -DforceStdout help:evaluate -Dexpression=project.groupId)
           ARTIFACT_ID=$(mvn -q -DforceStdout help:evaluate -Dexpression=project.artifactId)
-          VERSION=$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version)
+          VERSION="${{ steps.versioning.outputs.version }}"
           GROUP_PATH=$(echo "$GROUP_ID" | sed 's/\./\//g')
-          AUTH_USER=${GITHUB_ACTOR}
-          AUTH_TOKEN=${GITHUB_TOKEN}
+          
           URL="https://maven.pkg.github.com/${{ github.repository }}/$GROUP_PATH/$ARTIFACT_ID/$VERSION/$ARTIFACT_ID-$VERSION.pom"
-          echo "Checking Maven registry for $URL"
+          
           set +e
-          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -u ${AUTH_USER}:${AUTH_TOKEN} "$URL")
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -u "${GITHUB_ACTOR}:${GITHUB_TOKEN}" "$URL")
           set -e
           if [ "$HTTP_STATUS" = "200" ]; then
             echo "Artifact $ARTIFACT_ID:$VERSION already exists in Maven registry. Aborting." >&2
             exit 1
           fi
-          # Diagnostic: print sanitized settings.xml and server username
-          echo "Sanity check: ~/.m2/settings.xml (password masked)"
-          sed -n '1,200p' $HOME/.m2/settings.xml | sed 's/<password>.*<\/password>/<password>***<\/password>/g' || true
-          echo "Maven server username:" && grep -oP '(?<=<username>).*?(?=</username>)' $HOME/.m2/settings.xml || true
-          echo "Test HEAD to artifact URL (HTTP status):"; curl -s -o /dev/null -w "%{http_code}" -u ${AUTH_USER}:${AUTH_TOKEN} "$URL" || true
-          # Force a settings.xml (explicit) using GITHUB_TOKEN to avoid interpolation issues
-          echo "Overwriting ~/.m2/settings.xml with explicit credentials (username masked in logs)"
+          
           mkdir -p "$HOME/.m2"
           printf '%s\n' "<settings xmlns=\"http://maven.apache.org/SETTINGS/1.0.0\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd\">" > "$HOME/.m2/settings.xml"
-          printf '%s\n' "  <servers>" >> "$HOME/.m2/settings.xml"
-          printf '%s\n' "    <server>" >> "$HOME/.m2/settings.xml"
-          printf '%s\n' "      <id>github</id>" >> "$HOME/.m2/settings.xml"
-          printf '%s\n' "      <username>${GITHUB_ACTOR}</username>" >> "$HOME/.m2/settings.xml"
-          printf '%s\n' "      <password>${GITHUB_TOKEN}</password>" >> "$HOME/.m2/settings.xml"
-          printf '%s\n' "    </server>" >> "$HOME/.m2/settings.xml"
-          printf '%s\n' "  </servers>" >> "$HOME/.m2/settings.xml"
+          printf '%s\n' "  <servers><server><id>github</id><username>${GITHUB_ACTOR}</username><password>${GITHUB_TOKEN}</password></server></servers>" >> "$HOME/.m2/settings.xml"
           printf '%s\n' "</settings>" >> "$HOME/.m2/settings.xml"
-          mvn -B -DskipTests deploy -s $HOME/.m2/settings.xml
+          
+          mvn -B -DskipTests deploy -s "$HOME/.m2/settings.xml"
 
-      - name: Bump versions (post-publish)
-        if: ${{ success() && (inputs.publish_npm == 'true' || inputs.publish_maven == 'true') }}
-        id: bump
+      - name: Create Release PR for version bump
+        if: ${{ success() && steps.versioning.outputs.is_bumped == 'true' }}
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          set -e
-          # Only bump when previous steps succeeded — check GITHUB_STEP_SUMMARY?
-          # If publishing steps had failed, the job would have failed already unless they were 'if: always()'
-          # Bump npm package version without adding a git tag - patch only
-          npm version patch --no-git-tag-version
-          NEW_VER=$(node -p "require('./package.json').version")
-          echo "New npm version: $NEW_VER"
-          # Set Maven version to match (use a modern plugin and provide a fallback)
-          if ! mvn -B org.codehaus.mojo:versions-maven-plugin:2.18.0:set -DnewVersion=$NEW_VER -DgenerateBackupPoms=false; then
-            echo "versions-maven-plugin failed to resolve; falling back to a conservative pom.xml edit"
-            cp pom.xml pom.xml.bak || true
-            perl -0777 -pe "s|(<project[^>]*>.*?<version>)(.*?)(</version>)|\1$NEW_VER\3|s" -i pom.xml
-            echo "Fallback POM modification performed"
-          fi
+          NEW_VER="${{ steps.versioning.outputs.version }}"
+          BRANCH_NAME="chore/release-v${NEW_VER}"
+          
+          echo "Creating Release PR for version $NEW_VER on branch $BRANCH_NAME"
+          
+          git checkout -b "$BRANCH_NAME"
           git add package.json package-lock.json pom.xml
-          git commit -m "chore(release): bump version to $NEW_VER [skip ci]" || echo "No changes to commit"
-          git push origin HEAD:main
+          git commit -m "chore(release): bump version to $NEW_VER [skip ci]"
+          git push origin "$BRANCH_NAME" --force
+          
+          gh pr create \
+            --title "chore(release): bump version to $NEW_VER" \
+            --body "Automated release version bump following publishing v$NEW_VER to GitHub Packages." \
+            --base main \
+            --head "$BRANCH_NAME" || echo "PR already exists"
+          
+          gh pr merge "$BRANCH_NAME" --squash --auto || echo "Auto-merge enabled or already merged"
