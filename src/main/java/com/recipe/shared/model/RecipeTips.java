@@ -1,5 +1,6 @@
 package com.recipe.shared.model;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -20,18 +21,23 @@ import java.util.Map;
 public class RecipeTips {
 
     @JsonProperty("substitutions")
+    @JsonAlias({"ingredientSubstitutions", "ingredient_substitutions"})
     private List<String> substitutions;
 
     @JsonProperty("makeAhead")
+    @JsonAlias({"makeAheadTips", "make_ahead", "make_ahead_tips"})
     private String makeAhead;
 
     @JsonProperty("storage")
+    @JsonAlias({"storageInstructions", "storage_instructions"})
     private String storage;
 
     @JsonProperty("reheating")
+    @JsonAlias({"reheatingInstructions", "reheating_instructions"})
     private String reheating;
 
     @JsonProperty("variations")
+    @JsonAlias({"recipeVariations", "recipe_variations"})
     private List<String> variations;
 
     /**
@@ -46,18 +52,35 @@ public class RecipeTips {
 
         RecipeTipsBuilder builder = RecipeTips.builder();
 
-        if (tipsMap.get("substitutions") instanceof List) {
-            builder.substitutions((List<String>) tipsMap.get("substitutions"));
-        }
-        if (tipsMap.get("variations") instanceof List) {
-            builder.variations((List<String>) tipsMap.get("variations"));
+        Object subs = getFirstNonNull(tipsMap, "substitutions", "ingredientSubstitutions", "ingredient_substitutions");
+        if (subs instanceof List<?> list) {
+            builder.substitutions((List<String>) list.stream().filter(o -> o != null).map(Object::toString).toList());
         }
 
-        builder.storage(extractString(tipsMap.get("storage")));
-        builder.makeAhead(extractString(tipsMap.get("makeAhead")));
-        builder.reheating(extractString(tipsMap.get("reheating")));
+        Object vars = getFirstNonNull(tipsMap, "variations", "recipeVariations", "recipe_variations");
+        if (vars instanceof List<?> list) {
+            builder.variations((List<String>) list.stream().filter(o -> o != null).map(Object::toString).toList());
+        }
+
+        Object stor = getFirstNonNull(tipsMap, "storage", "storageInstructions", "storage_instructions");
+        builder.storage(extractString(stor));
+
+        Object make = getFirstNonNull(tipsMap, "makeAhead", "makeAheadTips", "make_ahead", "make_ahead_tips");
+        builder.makeAhead(extractString(make));
+
+        Object reht = getFirstNonNull(tipsMap, "reheating", "reheatingInstructions", "reheating_instructions");
+        builder.reheating(extractString(reht));
 
         return builder.build();
+    }
+
+    private static Object getFirstNonNull(Map<String, ?> map, String... keys) {
+        if (map == null) return null;
+        for (String key : keys) {
+            Object val = map.get(key);
+            if (val != null) return val;
+        }
+        return null;
     }
 
     private static String extractString(Object obj) {

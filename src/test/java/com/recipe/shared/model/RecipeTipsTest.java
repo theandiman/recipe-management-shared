@@ -102,6 +102,54 @@ class RecipeTipsTest {
     }
 
     @Test
+    void testFromMap_WithAliasKeys() {
+        // Given
+        Map<String, Object> tipsMap = Map.of(
+                "ingredientSubstitutions", List.of("Sub soy sauce for tamari"),
+                "recipeVariations", List.of("Add chili flakes"),
+                "storageInstructions", "Keep in fridge for 4 days",
+                "makeAheadTips", "Prep night before",
+                "reheatingInstructions", "Warm in oven at 350F"
+        );
+
+        // When
+        RecipeTips recipeTips = RecipeTips.fromMap(tipsMap);
+
+        // Then
+        assertNotNull(recipeTips);
+        assertEquals(List.of("Sub soy sauce for tamari"), recipeTips.getSubstitutions());
+        assertEquals(List.of("Add chili flakes"), recipeTips.getVariations());
+        assertEquals("Keep in fridge for 4 days", recipeTips.getStorage());
+        assertEquals("Prep night before", recipeTips.getMakeAhead());
+        assertEquals("Warm in oven at 350F", recipeTips.getReheating());
+    }
+
+    @Test
+    void testJsonDeserialization_WithAliasKeys() throws Exception {
+        // Given
+        String json = """
+        {
+          "ingredientSubstitutions": ["Use honey"],
+          "recipeVariations": ["Add nuts"],
+          "storageInstructions": "Freeze up to 1 month",
+          "makeAheadTips": "Can freeze raw",
+          "reheatingInstructions": "Thaw and bake"
+        }
+        """;
+
+        // When
+        RecipeTips recipeTips = objectMapper.readValue(json, RecipeTips.class);
+
+        // Then
+        assertNotNull(recipeTips);
+        assertEquals(List.of("Use honey"), recipeTips.getSubstitutions());
+        assertEquals(List.of("Add nuts"), recipeTips.getVariations());
+        assertEquals("Freeze up to 1 month", recipeTips.getStorage());
+        assertEquals("Can freeze raw", recipeTips.getMakeAhead());
+        assertEquals("Thaw and bake", recipeTips.getReheating());
+    }
+
+    @Test
     void testBuilderPattern() {
         // Test that Lombok @Builder works correctly
         RecipeTips recipeTips = RecipeTips.builder()
