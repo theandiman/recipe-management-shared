@@ -50,6 +50,10 @@ export interface Recipe {
 
   isPublic?: boolean;
 
+  // Social Ratings & Metrics
+  averageRating?: number;
+  ratingCount?: number;
+
   // AI-specific fields (optional, for AI service compatibility)
   imageGeneration?: Record<string, any>; // AI image generation metadata
 }

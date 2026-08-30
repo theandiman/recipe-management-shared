@@ -45,10 +45,16 @@ class RecipeTipsTest {
         // Given
         List<String> substitutions = Arrays.asList("Use soy milk", "Try coconut oil");
         List<String> variations = Arrays.asList("Add nuts", "Make it vegan");
+        List<String> storage = List.of("Refrigerate up to 3 days");
+        List<String> makeAhead = List.of("Prepare sauce ahead");
+        String reheating = "Reheat gently";
 
-        Map<String, List<String>> tipsMap = Map.of(
+        Map<String, Object> tipsMap = Map.of(
                 "substitutions", substitutions,
-                "variations", variations
+                "variations", variations,
+                "storage", storage,
+                "makeAhead", makeAhead,
+                "reheating", reheating
         );
 
         // When
@@ -58,7 +64,9 @@ class RecipeTipsTest {
         assertNotNull(recipeTips);
         assertEquals(substitutions, recipeTips.getSubstitutions());
         assertEquals(variations, recipeTips.getVariations());
-        // Note: makeAhead, storage, reheating are not handled in fromMap for simplicity
+        assertEquals("Refrigerate up to 3 days", recipeTips.getStorage());
+        assertEquals("Prepare sauce ahead", recipeTips.getMakeAhead());
+        assertEquals("Reheat gently", recipeTips.getReheating());
     }
 
     @Test
@@ -67,6 +75,9 @@ class RecipeTipsTest {
         RecipeTips recipeTips = RecipeTips.builder()
                 .substitutions(Arrays.asList("Use olive oil", "Try honey"))
                 .variations(Arrays.asList("Spicy version", "Sweet version"))
+                .storage("Store in fridge")
+                .makeAhead("Prep ingredients")
+                .reheating("Microwave for 1 min")
                 .build();
 
         // When
@@ -76,6 +87,9 @@ class RecipeTipsTest {
         assertNotNull(map);
         assertEquals(recipeTips.getSubstitutions(), map.get("substitutions"));
         assertEquals(recipeTips.getVariations(), map.get("variations"));
+        assertEquals(List.of("Store in fridge"), map.get("storage"));
+        assertEquals(List.of("Prep ingredients"), map.get("makeAhead"));
+        assertEquals(List.of("Microwave for 1 min"), map.get("reheating"));
     }
 
     @Test
