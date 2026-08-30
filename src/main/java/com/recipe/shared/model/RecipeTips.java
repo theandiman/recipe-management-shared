@@ -44,7 +44,6 @@ public class RecipeTips {
      * Creates RecipeTips from a Map structure (for storage service compatibility).
      * The storage service uses Map<String, List<String>> or Map<String, Object> for tips.
      */
-    @SuppressWarnings("unchecked")
     public static RecipeTips fromMap(Map<String, ?> tipsMap) {
         if (tipsMap == null) {
             return null;
@@ -54,12 +53,12 @@ public class RecipeTips {
 
         Object subs = getFirstNonNull(tipsMap, "substitutions", "ingredientSubstitutions", "ingredient_substitutions");
         if (subs instanceof List<?> list) {
-            builder.substitutions((List<String>) list.stream().filter(o -> o != null).map(Object::toString).toList());
+            builder.substitutions(list.stream().filter(o -> o != null).map(Object::toString).toList());
         }
 
         Object vars = getFirstNonNull(tipsMap, "variations", "recipeVariations", "recipe_variations");
         if (vars instanceof List<?> list) {
-            builder.variations((List<String>) list.stream().filter(o -> o != null).map(Object::toString).toList());
+            builder.variations(list.stream().filter(o -> o != null).map(Object::toString).toList());
         }
 
         Object stor = getFirstNonNull(tipsMap, "storage", "storageInstructions", "storage_instructions");
