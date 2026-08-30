@@ -1,6 +1,7 @@
 package com.recipe.shared.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.cloud.firestore.annotation.PropertyName;
 import lombok.AllArgsConstructor;
@@ -23,6 +24,7 @@ import java.util.Map;
 @Builder(toBuilder = true)
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class Recipe {
 
     // Core recipe information
