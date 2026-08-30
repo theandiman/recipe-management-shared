@@ -1,6 +1,14 @@
 # Workspace Rules & Directives
 
 ## 1. Git & PR Workflow
+- Always label Git actions explicitly (*Branch*, *Commit*, *PR*, *Checks*, *Merge*, *Cleanup*).
+- Run `gh pr checks <pr>` and confirm all CI checks pass green before merging.
+- Run `gh pr view <pr> --comments` and inspect PR feedback before merging.
+- Merge via `gh pr merge --squash --delete-branch --admin`, delete local branches, and pull `main`.
+
+## 2. Verification & Licensing
+- Keep repository public for free CI minutes while enforcing All Rights Reserved legal protection.
+- Build and test before pushing PRs.
 - Always label Git actions explicitly (*Branch*, *Commit*, *PR*, *Checks*, *Comments*, *Merge*, *Cleanup*).
 - **Git Commit Author**: Always execute AI commits with direct authorship flags:
   `git -c user.name="Antigravity AI" -c user.email="antigravity-ai@users.noreply.github.com" commit -m "..."`
