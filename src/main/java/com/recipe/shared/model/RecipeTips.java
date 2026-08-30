@@ -89,6 +89,6 @@ public class RecipeTips {
         if (reheating != null && !reheating.isBlank()) {
             map.put("reheating", List.of(reheating));
         }
-        return map.isEmpty() ? null : map;
+        return map;
     }
 }

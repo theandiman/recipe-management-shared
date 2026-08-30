@@ -74,6 +74,13 @@ public class Recipe {
     @Setter(onMethod_ = {@PropertyName("isPublic")})  // Apply @PropertyName to the generated setter
     private boolean publicRecipe; // Whether recipe is publicly visible to other users (renamed from isPublic to avoid Lombok getter/setter conflicts)
 
+    // Social Ratings & Metrics
+    @JsonProperty("averageRating")
+    private Double averageRating;
+
+    @JsonProperty("ratingCount")
+    private Integer ratingCount;
+
     // AI-specific fields (optional, for AI service compatibility)
     private Map<String, Object> imageGeneration; // AI image generation metadata
 
