@@ -1,6 +1,9 @@
 // TypeScript exports
 export * from './types/recipe';
 export * from './types/user';
+export * from './types/rating';
+export * from './types/comment';
+export * from './types/notification';
 
 // Java classes are available in the Java package:
 // com.recipe.shared.model.Recipe
