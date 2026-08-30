@@ -188,7 +188,7 @@ jobs:
           
           mvn -B -DskipTests deploy -s "$HOME/.m2/settings.xml"
 
-      - name: Create Release PR for version bump
+      - name: Push version bump to main or create Release PR
         if: ${{ success() && steps.versioning.outputs.is_bumped == 'true' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -196,17 +196,20 @@ jobs:
           NEW_VER="${{ steps.versioning.outputs.version }}"
           BRANCH_NAME="chore/release-v${NEW_VER}"
           
-          echo "Creating Release PR for version $NEW_VER on branch $BRANCH_NAME"
-          
-          git checkout -b "$BRANCH_NAME"
+          echo "Processing release version bump for $NEW_VER"
           git add package.json package-lock.json pom.xml
           git commit -m "chore(release): bump version to $NEW_VER [skip ci]"
-          git push origin "$BRANCH_NAME" --force
           
-          gh pr create \
-            --title "chore(release): bump version to $NEW_VER" \
-            --body "Automated release version bump following publishing v$NEW_VER to GitHub Packages." \
-            --base main \
-            --head "$BRANCH_NAME" || echo "PR already exists"
-          
-          gh pr merge "$BRANCH_NAME" --squash --auto || echo "Auto-merge enabled or already merged"
+          if git push origin HEAD:main; then
+            echo "Successfully pushed version bump $NEW_VER directly to main."
+          else
+            echo "Direct push to main failed; creating PR fallback..."
+            git checkout -b "$BRANCH_NAME"
+            git push origin "$BRANCH_NAME" --force
+            gh pr create \
+              --title "chore(release): bump version to $NEW_VER" \
+              --body "Automated release version bump following publishing v$NEW_VER to GitHub Packages." \
+              --base main \
+              --head "$BRANCH_NAME" || echo "PR already exists"
+            gh pr merge "$BRANCH_NAME" --squash --auto || echo "Auto-merge enabled or already merged"
+          fi
