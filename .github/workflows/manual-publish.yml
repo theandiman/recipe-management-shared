@@ -43,7 +43,7 @@ jobs:
       cancel-in-progress: true
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -97,21 +97,14 @@ jobs:
             exit 1
           fi
 
-      - name: Create tag on HEAD and push
-        run: |
-          TAG="${{ steps.versioning.outputs.tag }}"
-          MESSAGE="Release ${TAG}"
-          git tag -a "$TAG" -m "$MESSAGE"
-          git push origin "$TAG"
-
       - name: Set up Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@v4
         with:
           node-version: '24.x'
           registry-url: 'https://npm.pkg.github.com/'
 
       - name: Set up Java
-        uses: actions/setup-java@v6
+        uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '21'
@@ -186,7 +179,14 @@ jobs:
           printf '%s\n' "  <servers><server><id>github</id><username>${GITHUB_ACTOR}</username><password>${GITHUB_TOKEN}</password></server></servers>" >> "$HOME/.m2/settings.xml"
           printf '%s\n' "</settings>" >> "$HOME/.m2/settings.xml"
           
-          mvn -B -DskipTests deploy -s "$HOME/.m2/settings.xml"
+          mvn -B deploy -s "$HOME/.m2/settings.xml"
+
+      - name: Create tag on HEAD and push (after successful publish)
+        run: |
+          TAG="${{ steps.versioning.outputs.tag }}"
+          MESSAGE="Release ${TAG}"
+          git tag -a "$TAG" -m "$MESSAGE"
+          git push origin "$TAG"
 
       - name: Push version bump to main or create Release PR
         if: ${{ success() && steps.versioning.outputs.is_bumped == 'true' }}
