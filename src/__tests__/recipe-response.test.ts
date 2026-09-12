@@ -59,4 +59,20 @@ describe('RecipeResponse DTO contracts', () => {
     expect(paged.totalCount).toBe(10);
     expect(paged.nextPageToken).toBe('cursor-token-abc');
   });
+
+  it('should allow RecipeResponse with only title and no recipeName', () => {
+    const titleOnlyResponse: RecipeResponse = {
+      id: 'recipe-999',
+      title: 'Quick Salad',
+      ingredients: ['Lettuce', 'Tomato'],
+      instructions: ['Toss together'],
+      servings: 1,
+      source: 'manual',
+      authorDisplayName: 'Chef Remi'
+    };
+
+    expect(titleOnlyResponse.title).toBe('Quick Salad');
+    expect(titleOnlyResponse.recipeName).toBeUndefined();
+    expect(titleOnlyResponse.authorDisplayName).toBe('Chef Remi');
+  });
 });
