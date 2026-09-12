@@ -54,8 +54,46 @@ export interface Recipe {
   averageRating?: number;
   ratingCount?: number;
 
+  // Author metadata for public / social views
+  authorDisplayName?: string;
+  authorAvatarUrl?: string;
+  author?: AuthorDto;
+
+  // Social user interactions
+  likeCount?: number;
+  isLikedByCurrentUser?: boolean;
+  isSavedByCurrentUser?: boolean;
+
   // AI-specific fields (optional, for AI service compatibility)
   imageGeneration?: Record<string, any>; // AI image generation metadata
+}
+
+/**
+ * Author metadata DTO for recipes.
+ */
+export interface AuthorDto {
+  uid: string;
+  displayName?: string;
+  avatarUrl?: string;
+}
+
+/**
+ * Enriched Recipe Response DTO returned by storage service endpoints.
+ * Extends Recipe to guarantee backward compatibility, while supporting
+ * both 'recipeName' and 'title', and all enriched social / presentation metadata.
+ */
+export interface RecipeResponse extends Recipe {
+  title?: string;
+}
+
+/**
+ * Paginated Recipe Response DTO for list / feed endpoints.
+ */
+export interface PagedRecipeResponse {
+  recipes: RecipeResponse[];
+  size: number;
+  totalCount: number;
+  nextPageToken?: string | null;
 }
 
 export interface NutritionalInfo {

@@ -8,6 +8,9 @@ export * from './types/notification';
 // Java classes are available in the Java package:
 // com.recipe.shared.model.Recipe
 // com.recipe.shared.model.UserProfile
+// com.recipe.shared.model.Rating
+// com.recipe.shared.model.Comment
+// com.recipe.shared.model.SocialNotification
 // com.recipe.shared.model.NutritionalInfo
 // com.recipe.shared.model.NutritionValues
 // com.recipe.shared.model.RecipeTips
