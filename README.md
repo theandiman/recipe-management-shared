@@ -29,12 +29,25 @@ The core `Recipe` model includes all recipe-related fields with consistent namin
 - `prepTime` / `cookTime`: Human-readable strings (e.g., "15 minutes")
 - `totalTimeMinutes`: Calculated total time
 
+### Response DTOs
+
+In addition to core persistence models, shared response DTOs are available for service API boundaries in both TypeScript and Java:
+
+- **`RecipeResponse`**: Enriched API response payload containing the core recipe fields plus author metadata (`authorDisplayName`, `authorAvatarUrl`, `author`) and social interaction state (`likeCount`, `isLikedByCurrentUser`, `isSavedByCurrentUser`).
+- **`AuthorDto`**: Author profile information (`uid`, `displayName`, `avatarUrl`).
+- **`PagedRecipeResponse`**: Standard paginated wrapper containing `recipes`, `size`, `totalCount`, and `nextPageToken`.
+
+#### Title & RecipeName Alias Policy
+To support backward compatibility across services:
+- Core `Recipe` entities standardize on `recipeName`.
+- `RecipeResponse` emits both `recipeName` and `title` (or supports payloads specifying either key), allowing existing consumers expecting `title` and updated consumers expecting `recipeName` to consume responses without breaking.
+
 ## Usage
 
 ### TypeScript (Frontend)
 
 ```typescript
-import { Recipe, NutritionalInfo, RecipeTips } from '@recipe-management/shared';
+import { Recipe, RecipeResponse, PagedRecipeResponse, AuthorDto, NutritionalInfo, RecipeTips } from '@recipe-management/shared';
 
 // Use the shared types
 const recipe: Recipe = {
@@ -50,6 +63,9 @@ const recipe: Recipe = {
 
 ```java
 import com.recipe.shared.model.Recipe;
+import com.recipe.shared.model.RecipeResponse;
+import com.recipe.shared.model.PagedRecipeResponse;
+import com.recipe.shared.model.AuthorDto;
 import com.recipe.shared.model.NutritionalInfo;
 
 // Use the shared models
@@ -69,7 +85,7 @@ Recipe recipe = Recipe.builder()
 #### Frontend Changes
 Replace the existing `Recipe` interface in `src/types/nutrition.ts` with:
 ```typescript
-import { Recipe } from '@recipe-management/shared';
+import { Recipe, RecipeResponse } from '@recipe-management/shared';
 ```
 
 #### AI Service Changes
@@ -80,7 +96,8 @@ Replace `RecipeDTO` with the shared `Recipe` model. Key mapping:
 
 #### Storage Service Changes
 Replace the existing `Recipe` entity with the shared model. Key mapping:
-- `title` → `recipeName`
+- `title` → `recipeName` in core persistence (`Recipe`)
+- API endpoints returning `RecipeResponse` provide both `recipeName` and `title` aliases for backward compatibility.
 - `nutrition` (Map) → `nutritionalInfo` (NutritionalInfo)
 - `tips` (Map) → `tips` (RecipeTips)
 

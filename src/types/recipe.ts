@@ -58,6 +58,45 @@ export interface Recipe {
   imageGeneration?: Record<string, any>; // AI image generation metadata
 }
 
+/**
+ * Author metadata DTO for recipes.
+ */
+export interface AuthorDto {
+  uid: string;
+  displayName?: string;
+  avatarUrl?: string;
+}
+
+/**
+ * Enriched Recipe Response DTO returned by storage service endpoints.
+ * Extends Recipe (omitting mandatory recipeName) so that either or both
+ * 'recipeName' and 'title' can be provided, and encapsulates social and author metadata.
+ */
+export interface RecipeResponse extends Omit<Recipe, 'recipeName'> {
+  recipeName?: string;
+  title?: string;
+
+  // Author metadata for public / social views
+  authorDisplayName?: string;
+  authorAvatarUrl?: string;
+  author?: AuthorDto;
+
+  // Social user interactions
+  likeCount?: number;
+  isLikedByCurrentUser?: boolean;
+  isSavedByCurrentUser?: boolean;
+}
+
+/**
+ * Paginated Recipe Response DTO for list / feed endpoints.
+ */
+export interface PagedRecipeResponse {
+  recipes: RecipeResponse[];
+  size: number;
+  totalCount: number;
+  nextPageToken?: string | null;
+}
+
 export interface NutritionalInfo {
   perServing?: NutritionValues;
   total?: NutritionValues;
